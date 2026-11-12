@@ -1,11 +1,13 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "nextjs",
-  "regions": ["bom1"],
-  "crons": [{ "path": "/api/cron/maintenance", "schedule": "30 21 * * *" }],
-  "functions": {
-    "src/app/api/admin/provision/route.ts": { "maxDuration": 60 },
-    "src/app/api/admin/slips/route.ts": { "maxDuration": 60 },
-    "src/app/api/admin/credentials/reissue/route.ts": { "maxDuration": 60 }
-  }
+  "regions": [
+    "bom1"
+  ],
+  "crons": [
+    {
+      "path": "/api/cron/maintenance",
+      "schedule": "30 21 * * *"
+    }
+  ]
 }
