@@ -40,7 +40,7 @@ describe('PDF slips', () => {
       team_number: n, team_name: `Équipe ${n} 🚀`, team_pin: '482913', team_pin_state: 'available' as const,
       members: [1, 2, 3, 4].map((s) => ({ slot_number: s, name: s < 3 ? `Member ${s}` : null, employee_id: s < 3 ? `E${s}` : null, pin: s === 4 ? null : '571946', pin_state: (s === 4 ? 'reissue_required' : 'available') as 'available' | 'reissue_required' })),
     });
-    const bytes = await renderSlipsPdf({ name: 'Designathon X', problems_qr_url: 'https://x.test/p', goodies_qr_url: 'https://x.test/g' }, [team(1), team(2), team(3)]);
+    const bytes = await renderSlipsPdf({ name: 'Designathon X' }, [team(1), team(2), team(3)]);
     const doc = await PDFDocument.load(bytes);
     expect(doc.getPageCount()).toBe(2);
     const [w, h] = [doc.getPage(0).getWidth(), doc.getPage(0).getHeight()];

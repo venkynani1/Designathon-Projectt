@@ -1,5 +1,4 @@
-import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage, type PDFImage } from 'pdf-lib';
-import QRCode from 'qrcode';
+import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from 'pdf-lib';
 import { teamLabel } from '../normalize';
 
 export type PinState = 'available' | 'reissue_required' | 'withheld';
@@ -17,8 +16,6 @@ export interface SlipEvent {
   tagline?: string | null;
   venue?: string | null;
   brand_color?: string | null;
-  problems_qr_url?: string | null;
-  goodies_qr_url?: string | null;
 }
 
 const A4: [number, number] = [595.28, 841.89];
@@ -58,7 +55,7 @@ function pinLabel(pin: string | null, state: PinState): string {
 }
 
 /**
- * A4, two teams per page. Each team section = header (team PIN + instructions + QR codes)
+ * A4, two teams per page. Each team section = header (team PIN + instructions; arena QR codes are shown on the venue screen)
  * and four detachable personal-PIN coupons, so each teammate receives only their own PIN.
  */
 export async function renderSlipsPdf(event: SlipEvent, teams: SlipTeam[], opts: { title?: string } = {}): Promise<Uint8Array> {
@@ -72,10 +69,6 @@ export async function renderSlipsPdf(event: SlipEvent, teams: SlipTeam[], opts: 
   const brand = hexToRgb(event.brand_color);
   const grey = rgb(0.35, 0.35, 0.4);
 
-  const qr = async (url?: string | null): Promise<PDFImage | null> =>
-    url ? doc.embedPng(await QRCode.toBuffer(url, { type: 'png', margin: 1, width: 240, errorCorrectionLevel: 'M' })) : null;
-  const qrProblems = await qr(event.problems_qr_url);
-  const qrGoodies = await qr(event.goodies_qr_url);
 
   const half = A4[1] / 2;
   let page: PDFPage | null = null;
@@ -103,22 +96,13 @@ export async function renderSlipsPdf(event: SlipEvent, teams: SlipTeam[], opts: 
     p.drawText(pinLabel(t.team_pin, t.team_pin_state), { x: M + 14, y: y - 63, size: 20, font: mono, color: t.team_pin ? rgb(0, 0, 0) : rgb(0.75, 0.1, 0.1) });
 
     const instr = [
-      '1. Problem Statement Arena: scan the QR, find your team number or name,',
-      '   enter the TEAM PIN and lock ONE problem statement (shared by the whole team).',
-      '2. Goodies Arena: scan the QR, enter YOUR employee ID and YOUR personal PIN',
-      '   (coupon below). One goodie per participant — reservations are final.',
+      '1. Problem Statement Arena: scan the QR code shown on the screen at the venue, find your',
+      '   team number or name, enter the TEAM PIN and lock ONE problem statement for the whole team.',
+      '2. Goodies Arena: scan the QR code shown on the screen, enter YOUR employee ID and YOUR',
+      '   personal PIN (coupon below). One goodie per participant - reservations are final.',
       '3. Never share personal PINs. Lost or exposed PIN? Visit the registration desk.',
     ];
     instr.forEach((line, i) => p.drawText(pdfSafe(line), { x: M + 4, y: y - 86 - i * 10, size: 7.5, font: regular, color: grey }));
-
-    // QR codes
-    const qrSize = 74;
-    const qrs: [PDFImage | null, string][] = [[qrProblems, 'Problem Arena'], [qrGoodies, 'Goodies Arena']];
-    qrs.filter(([img]) => img).forEach(([img, cap], i, arr) => {
-      const x = M + W - (arr.length - i) * (qrSize + 12);
-      p.drawImage(img!, { x, y: y - 76, width: qrSize, height: qrSize });
-      p.drawText(cap, { x: x + (qrSize - regular.widthOfTextAtSize(cap, 7)) / 2, y: y - 86, size: 7, font: regular, color: grey });
-    });
     p.drawText('CONFIDENTIAL — team leader keeps this section', { x: M + W - 190, y: y - 132, size: 6.5, font: bold, color: rgb(0.7, 0.1, 0.1) });
 
     // detachable coupons

@@ -7,7 +7,7 @@ permanent, unique, Argon2id-hashed PIN that survives renames, edits and imports.
 
 * **Problem Statement Arena** (`/arena/problems`) — team number/name + **team PIN** → one atomic, capacity-safe lock per team.
 * **Goodies Arena** (`/arena/goodies`) — **employee ID + personal slot PIN** → one permanent reservation per employee, stock-safe.
-* **Organizer console** (`/admin`) — generate/extend teams, import CSV/XLSX, walk-ins, edits, slips (PDF), Excel report, event controls, audit log.
+* **Organizer console** (`/admin`) — problem statements & goodies (with quantities), projector QR screens with open/close, generate/extend teams, import CSV/XLSX, walk-ins, edits, slips (PDF), Excel report, event controls, audit log.
 
 See [`docs/CREDENTIAL_POLICY.md`](docs/CREDENTIAL_POLICY.md) for the credential rules and the supervised reissue process.
 
@@ -39,12 +39,11 @@ Browser ──► Next.js route handlers (authorize, validate, CSRF origin check
 3. **First organizer:** set `DX_BOOTSTRAP_ADMIN_EMAIL` and `DX_BOOTSTRAP_ADMIN_PASSWORD` (≥ 12 chars).
 4. **Deploy.** Every build runs `scripts/migrate.mjs` first: applies new migrations once, ensures the
    least-privilege runtime role `dx_app`, seeds `db/seed.sql` on the first run, creates the organizer.
-   Edit `db/seed.sql` (event name, QR URLs, problem statements, goodies) before the first deploy, or
-   change rows later in the Neon SQL editor.
+   Problem statements and goodies are managed in the console (**Problem statements** / **Goodies** pages).
 5. **More organizers / password reset:**
    `DATABASE_URL=<unpooled url> node scripts/create-admin.mjs someone@corp.com registrar "Name" [--issuer]`
-6. **Problem statement documents:** put a `https://` link (Drive, SharePoint, …) in
-   `problem_statements.document_url`.
+6. **Arena QR codes are shown on screen, not printed:** console → Problem statements / Goodies →
+   **Show QR screen** (full-screen, for a projector) with an **Open / Close arena** button and live counts.
 
 Local: `cp .env.example .env.local`, set `DATABASE_URL`, `npm install`, `npm run db:migrate`, `npm run dev`.
 

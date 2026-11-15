@@ -5,6 +5,8 @@ import { useAdmin } from './AdminContext';
 
 const LINKS = [
   { href: '/admin', label: 'Registrations', min: 'viewer' },
+  { href: '/admin/problems', label: 'Problem statements', min: 'viewer' },
+  { href: '/admin/goodies', label: 'Goodies', min: 'viewer' },
   { href: '/admin/walk-in', label: 'Walk-in', min: 'registrar' },
   { href: '/admin/import', label: 'Import', min: 'registrar' },
   { href: '/admin/provision', label: 'Teams & credentials', min: 'admin' },

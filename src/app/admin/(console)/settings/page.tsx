@@ -28,6 +28,10 @@ export default function Settings() {
   return (
     <div className="mx-auto max-w-2xl space-y-4">
       <h1 className="text-2xl font-black">Event controls</h1>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <a href="/admin/screen/problems" target="_blank" rel="noopener" className="rounded-2xl bg-slate-900 p-4 text-white hover:bg-slate-700"><div className="text-xs uppercase tracking-wide opacity-70">Projector</div><div className="font-bold">Problem Arena QR screen ↗</div></a>
+        <a href="/admin/screen/goodies" target="_blank" rel="noopener" className="rounded-2xl bg-slate-900 p-4 text-white hover:bg-slate-700"><div className="text-xs uppercase tracking-wide opacity-70">Projector</div><div className="font-bold">Goodies Arena QR screen ↗</div></a>
+      </div>
       {err && <Alert>{err}</Alert>}
       {flags && ITEMS.map((i) => (
         <Card key={i.key} className="flex items-center justify-between gap-4">

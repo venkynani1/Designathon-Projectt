@@ -41,3 +41,24 @@ export const teamLoginSchema = z.object({ team_number: z.coerce.number().int().m
 export const participantLoginSchema = z.object({ employee_id: z.string().trim().min(1).max(40), pin: z.string().max(12) });
 export const lockSchema = z.object({ problem_id: uuid });
 export const reserveSchema = z.object({ goodie_id: uuid });
+
+const optUrl = z.string().trim().max(1000).optional().nullable().transform((v) => (v ? v : null));
+export const problemSchema = z.object({
+  id: uuid.optional().nullable(),
+  code: z.string().trim().min(1).max(20),
+  title: z.string().trim().min(2).max(160),
+  summary: z.string().trim().max(2000).optional().nullable(),
+  capacity: z.number().int().min(1).max(10000),
+  document_url: optUrl,
+  is_active: z.boolean().optional().default(true),
+  sort_order: z.number().int().min(0).max(100000).optional().nullable(),
+});
+export const goodieSchema = z.object({
+  id: uuid.optional().nullable(),
+  name: z.string().trim().min(1).max(80),
+  description: z.string().trim().max(500).optional().nullable(),
+  stock: z.number().int().min(0).max(100000),
+  image_url: optUrl,
+  is_active: z.boolean().optional().default(true),
+  sort_order: z.number().int().min(0).max(100000).optional().nullable(),
+});

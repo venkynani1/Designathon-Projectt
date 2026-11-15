@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { api, ApiError } from '@/components/api';
 import { Alert, Badge, Button, Card, Field, Modal, teamLabel } from '@/components/ui';
 
-interface Goodie { id: string; name: string; description: string | null; remaining: number }
+interface Goodie { id: string; name: string; description: string | null; image_url: string | null; remaining: number }
 interface State {
   participant: { name: string; slot: string; team_number: number; team_name: string; goodies_eligible: boolean };
   goodies_open: boolean;
@@ -130,6 +130,10 @@ export default function GoodiesArena() {
               const out = g.remaining <= 0;
               return (
                 <Card key={g.id} className={mine ? 'ring-2 ring-emerald-500' : ''}>
+                  {g.image_url && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={g.image_url} alt="" className="mb-3 h-36 w-full rounded-xl object-cover" />
+                  )}
                   <div className="flex items-start justify-between gap-2">
                     <h2 className="font-bold">{g.name}</h2>
                     {mine ? <Badge tone="green">Yours</Badge> : out ? <Badge tone="red">Gone</Badge> : <Badge tone="blue">{g.remaining} left</Badge>}
