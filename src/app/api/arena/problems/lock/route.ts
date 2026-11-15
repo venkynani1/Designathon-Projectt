@@ -1,5 +1,5 @@
 import { route, json, body } from '@/lib/http';
-import { db } from '@/lib/supabase/server';
+import { db } from '@/lib/server/db';
 import { requireArenaSession } from '@/lib/arenaSession';
 import { lockSchema } from '@/lib/validation';
 

@@ -1,5 +1,5 @@
 import { route, json } from '@/lib/http';
-import { db } from '@/lib/supabase/server';
+import { db } from '@/lib/server/db';
 import { clearSessionCookie, sessionToken } from '@/lib/arenaSession';
 import { hashToken } from '@/lib/crypto/tokens';
 

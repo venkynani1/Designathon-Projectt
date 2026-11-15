@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { route } from '@/lib/http';
-import { db } from '@/lib/supabase/server';
+import { db } from '@/lib/server/db';
 import { currentEvent } from '@/lib/event';
 
 /**

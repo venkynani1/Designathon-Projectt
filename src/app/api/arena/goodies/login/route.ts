@@ -1,5 +1,5 @@
 import { route, json, body, clientIp } from '@/lib/http';
-import { db } from '@/lib/supabase/server';
+import { db } from '@/lib/server/db';
 import { currentEvent } from '@/lib/event';
 import { participantLoginSchema } from '@/lib/validation';
 import { authenticateParticipant, openArenaSession } from '@/lib/services/arenaAuth';

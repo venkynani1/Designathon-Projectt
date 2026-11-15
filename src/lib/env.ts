@@ -7,16 +7,12 @@ function required(name: string): string {
 }
 
 function key32(name: string): Buffer {
-  const raw = required(name);
-  const buf = Buffer.from(raw, 'base64');
+  const buf = Buffer.from(required(name), 'base64');
   if (buf.length !== 32) throw new DxError('CONFIG', `${name} must be 32 random bytes, base64-encoded`);
   return buf;
 }
 
 export const env = {
-  supabaseUrl: () => required('NEXT_PUBLIC_SUPABASE_URL'),
-  supabaseAnonKey: () => required('NEXT_PUBLIC_SUPABASE_ANON_KEY'),
-  serviceRoleKey: () => required('SUPABASE_SERVICE_ROLE_KEY'),
   eventCode: () => process.env.DX_EVENT_CODE ?? 'designathon-x',
   /** HMAC key for PIN fingerprints (uniqueness). Never stored in the database. */
   pinPepper: () => key32('DX_PIN_PEPPER'),

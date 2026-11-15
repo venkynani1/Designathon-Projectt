@@ -1,6 +1,6 @@
 import { route, fileResponse } from '@/lib/http';
 import { requireAdmin } from '@/lib/auth/admin';
-import { db } from '@/lib/supabase/server';
+import { db } from '@/lib/server/db';
 import { currentEvent } from '@/lib/event';
 import { buildTeamReport, type ReportRow } from '@/lib/reports/excel';
 

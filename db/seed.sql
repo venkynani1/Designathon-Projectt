@@ -23,6 +23,6 @@ from events e, (values
 ) as v(name, description, stock, sort_order)
 where e.code = 'designathon-x' and not exists (select 1 from goodies g where g.event_id = e.id and g.name = v.name);
 
--- Bootstrap the first superadmin AFTER creating the user in Supabase Auth:
--- insert into admin_users (user_id, email, role, can_issue_credentials)
--- select id, email, 'superadmin', true from auth.users where email = 'you@company.com';
+-- Create the first organizer account with:
+--   DATABASE_URL=... node scripts/create-admin.mjs you@company.com superadmin "Your Name" --issuer
+-- Problem statement documents: set problem_statements.document_url to a https:// link (Drive, SharePoint, ...).

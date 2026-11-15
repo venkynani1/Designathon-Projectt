@@ -1,7 +1,7 @@
 import { route, json, body } from '@/lib/http';
 import { requireAdmin } from '@/lib/auth/admin';
 import { authorizePrivileged } from '@/lib/auth/roles';
-import { db } from '@/lib/supabase/server';
+import { db } from '@/lib/server/db';
 import { currentEvent } from '@/lib/event';
 import { walkInSchema } from '@/lib/validation';
 

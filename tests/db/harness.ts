@@ -7,7 +7,7 @@ import { pgDb } from '@/lib/pgDb';
 
 /**
  * Real PostgreSQL integration harness. Each test file gets a fresh database with the
- * production migrations applied (plus a tiny stand-in for Supabase's auth schema/roles).
+ * production migrations applied (the same files run on Neon).
  * Connection: DX_TEST_PG (default postgres://postgres@127.0.0.1:54329/postgres).
  */
 const ADMIN_URL = process.env.DX_TEST_PG ?? 'postgres://postgres@127.0.0.1:54329/postgres';
@@ -33,14 +33,14 @@ export async function createTestDb(): Promise<TestDb> {
 
   const setup = new pg.Client({ connectionString: url });
   await setup.connect();
-  await setup.query(readFileSync(path.join(ROOT, 'tests/db/supabase-stub.sql'), 'utf8'));
-  const migDir = path.join(ROOT, 'supabase/migrations');
-  for (const f of readdirSync(migDir).filter((x) => x.endsWith('.sql') && !x.includes('storage')).sort()) {
+  // Behave like Neon: the server role may NOT bypass row-level security.
+  await setup.query(`do $r$ begin if exists (select 1 from pg_roles where rolname = 'service_role') then alter role service_role nobypassrls; end if; end $r$`);
+  const migDir = path.join(ROOT, 'db/migrations');
+  for (const f of readdirSync(migDir).filter((x) => x.endsWith('.sql')).sort()) {
     await setup.query(readFileSync(path.join(migDir, f), 'utf8'));
   }
-  const actor = await setup.query(`insert into auth.users (email) values ('admin@corp.example') returning id`);
-  const actorId = actor.rows[0].id as string;
-  await setup.query(`insert into admin_users (user_id, email, role, can_issue_credentials) values ($1, 'admin@corp.example', 'superadmin', true)`, [actorId]);
+  const actor = await setup.query(`insert into admin_users (email, role, can_issue_credentials) values ('admin@corp.example', 'superadmin', true) returning user_id`);
+  const actorId = actor.rows[0].user_id as string;
   const ev = await setup.query(`insert into events (code, name) values ('test-event', 'Designathon X Test') returning id`);
   await setup.end();
 

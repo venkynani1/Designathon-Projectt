@@ -1,5 +1,5 @@
 import { route, json } from '@/lib/http';
-import { db } from '@/lib/supabase/server';
+import { db } from '@/lib/server/db';
 import { requireArenaSession } from '@/lib/arenaSession';
 
 export const GET = route(async () => {

@@ -1,7 +1,6 @@
 'use client';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { browserClient } from '@/lib/supabase/browser';
 import { useAdmin } from './AdminContext';
 
 const LINKS = [
@@ -28,7 +27,7 @@ export function Nav() {
         </nav>
         <div className="ml-auto flex items-center gap-3 text-xs text-slate-500">
           <span>{admin.email} · {admin.role}{admin.can_issue_credentials ? ' · issuer' : ''}</span>
-          <button className="font-semibold text-slate-700 hover:underline" onClick={async () => { await browserClient().auth.signOut(); router.replace('/admin/login'); }}>Sign out</button>
+          <button className="font-semibold text-slate-700 hover:underline" onClick={async () => { await fetch('/api/admin/logout', { method: 'POST' }).catch(() => undefined); router.replace('/admin/login'); }}>Sign out</button>
         </div>
       </div>
     </header>

@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { timingSafeEqual } from 'node:crypto';
-import { db } from '@/lib/supabase/server';
+import { db } from '@/lib/server/db';
 import { env } from '@/lib/env';
 
 export const runtime = 'nodejs';

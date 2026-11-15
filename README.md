@@ -1,6 +1,6 @@
 # Designathon X — Permanent Credential & Registration System
 
-Next.js 15 · TypeScript · Tailwind · Supabase (PostgreSQL, Auth, Storage) · Vercel
+Next.js 15 · TypeScript · Tailwind · PostgreSQL (Neon free tier, or any Postgres 15+) · Vercel
 
 Numbered teams (Team 001…) with four permanent participant slots (P1–P4). Every team and slot has a
 permanent, unique, Argon2id-hashed PIN that survives renames, edits and imports. Two arenas consume them:
@@ -32,26 +32,28 @@ Browser ──► Next.js route handlers (authorize, validate, CSRF origin check
 
 ## Setup
 
-1. **Supabase**: create a project. Apply migrations (`supabase link` then `supabase db push`), or paste
-   `supabase/migrations/*.sql` into the SQL editor in order. Then run `supabase/seed.sql` (edit event name, QR URLs, problem statements, goodies first).
-2. **Admins**: create users in Supabase Auth (email/password), then:
-   ```sql
-   insert into admin_users (user_id, email, role, can_issue_credentials)
-   select id, email, 'superadmin', true from auth.users where email = 'you@company.com';
-   ```
-   Disable public sign-ups in Supabase Auth settings.
-3. **Problem documents**: upload PDFs to the private `problem-docs` bucket and set `problem_statements.document_path`
-   (served to verified teams via 10-minute signed URLs).
-4. **Environment**: copy `.env.example` → `.env.local`; generate `DX_PIN_PEPPER`, `DX_VAULT_KEY` with `openssl rand -base64 32`.
-   Keep the pepper stable for the whole event. Store both only in Vercel env vars / a secret manager.
-5. `npm install && npm run dev`
+1. **Database:** in Vercel → your project → **Storage → Create Database → Neon (Free) → Connect to project**.
+   This adds `DATABASE_URL` / `DATABASE_URL_UNPOOLED`. Any PostgreSQL 15+ also works.
+2. **Secrets** (Vercel → Settings → Environment Variables), each from `openssl rand -base64 32`:
+   `DX_PIN_PEPPER`, `DX_VAULT_KEY`, `CRON_SECRET`. Keep them stable for the whole event.
+3. **First organizer:** set `DX_BOOTSTRAP_ADMIN_EMAIL` and `DX_BOOTSTRAP_ADMIN_PASSWORD` (≥ 12 chars).
+4. **Deploy.** Every build runs `scripts/migrate.mjs` first: applies new migrations once, ensures the
+   least-privilege runtime role `dx_app`, seeds `db/seed.sql` on the first run, creates the organizer.
+   Edit `db/seed.sql` (event name, QR URLs, problem statements, goodies) before the first deploy, or
+   change rows later in the Neon SQL editor.
+5. **More organizers / password reset:**
+   `DATABASE_URL=<unpooled url> node scripts/create-admin.mjs someone@corp.com registrar "Name" [--issuer]`
+6. **Problem statement documents:** put a `https://` link (Drive, SharePoint, …) in
+   `problem_statements.document_url`.
 
-## Deploy (Vercel)
-* Import the repo, set all env vars from `.env.example` (Production + Preview), deploy.
-* `vercel.json` sets the Mumbai region (`bom1`, change to match your Supabase region), 60 s limits for PDF/provisioning routes,
-  and an hourly cron for `/api/cron/maintenance` (authorized with `CRON_SECRET`).
-* Optional: set `DX_DATABASE_URL` (Supabase transaction pooler) + `DX_DATABASE_ROLE=service_role` to call the same
-  functions over direct PostgreSQL instead of PostgREST.
+Local: `cp .env.example .env.local`, set `DATABASE_URL`, `npm install`, `npm run db:migrate`, `npm run dev`.
+
+## Deploy (Vercel Hobby works)
+* Push to `main` → Vercel builds (migrations run automatically) and deploys.
+* `vercel.json` sets the Mumbai region (`bom1`) and a daily cron for `/api/cron/maintenance` (`CRON_SECRET`).
+* Security model: the app connects as `dx_app` (no owner rights, cannot alter tables or disable the
+  immutability triggers); RLS is on for every table; organizer sessions are httpOnly cookies backed by
+  revocable server-side sessions; passwords and PINs are Argon2id hashes.
 
 ## Event-day runbook
 | When | Do |
@@ -82,8 +84,8 @@ Built-in safeguards for a crowd:
 **Recommended plans for the event day**
 | Service | Plan | Why |
 |---|---|---|
-| Vercel | **Pro** | Hobby is for non-commercial use and has lower function concurrency/limits. |
-| Supabase | **Pro + Small compute (or larger)** for the event week | Free tier pauses when idle and has the smallest CPU/connection budget. Scale back down afterwards. |
+| Vercel | Hobby is technically sufficient | Hobby's terms are personal/non-commercial — your call for a company event. |
+| Neon | Free works; Launch (pay-per-use) if you want more headroom | Free scales to zero when idle and autoscales up to 2 CU; first request after idle takes a moment. |
 
 Before doors open: open both arena pages once (warms functions), confirm the cron secret, and keep a
 printed fallback list of team numbers. Run the load test against a staging copy with

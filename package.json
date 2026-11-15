@@ -11,14 +11,13 @@
     "test": "vitest run",
     "test:unit": "vitest run tests/unit",
     "test:db": "vitest run tests/db",
-    "db:migrate": "supabase db push",
     "test:e2e": "vitest run tests/e2e",
-    "test:load": "vitest run tests/load"
+    "test:load": "vitest run tests/load",
+    "admin:create": "node scripts/create-admin.mjs",
+    "db:migrate": "node scripts/migrate.mjs"
   },
   "dependencies": {
     "@node-rs/argon2": "2.2.2",
-    "@supabase/ssr": "0.12.7",
-    "@supabase/supabase-js": "2.119.0",
     "exceljs": "4.4.0",
     "next": "15.5.29",
     "papaparse": "5.7.1",

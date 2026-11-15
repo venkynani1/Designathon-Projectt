@@ -1,6 +1,6 @@
 import { route, json, body } from '@/lib/http';
 import { requireAdmin } from '@/lib/auth/admin';
-import { db } from '@/lib/supabase/server';
+import { db } from '@/lib/server/db';
 import { currentEvent } from '@/lib/event';
 import { mappingSchema, uuid } from '@/lib/validation';
 import { buildPlan, fieldsFor, type ImportContext, type ImportFormat } from '@/lib/import/plan';

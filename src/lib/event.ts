@@ -14,7 +14,7 @@ let cache: { at: number; ev: EventRow } | null = null;
 export async function currentEvent(db: Db, fresh = false): Promise<EventRow> {
   if (!fresh && cache && Date.now() - cache.at < 15_000) return cache.ev;
   const ev = await db.rpc<EventRow | null>('get_event', { p_code: env.eventCode() });
-  if (!ev) throw new DxError('CONFIG', `Event "${env.eventCode()}" not found — run supabase/seed.sql`);
+  if (!ev) throw new DxError('CONFIG', `Event "${env.eventCode()}" not found — run db/seed.sql`);
   cache = { at: Date.now(), ev };
   return ev;
 }

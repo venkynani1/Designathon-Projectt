@@ -1,6 +1,6 @@
 import { route, json } from '@/lib/http';
 import { requireAdmin } from '@/lib/auth/admin';
-import { db } from '@/lib/supabase/server';
+import { db } from '@/lib/server/db';
 import { currentEvent } from '@/lib/event';
 
 export const GET = route(async () => {

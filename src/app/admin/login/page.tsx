@@ -1,7 +1,7 @@
 'use client';
 import { Suspense, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { browserClient } from '@/lib/supabase/browser';
+import { api, ApiError } from '@/components/api';
 import { Alert, Button, Card, Field } from '@/components/ui';
 
 function LoginForm() {
@@ -15,9 +15,13 @@ function LoginForm() {
     e.preventDefault();
     setBusy(true);
     setErr('');
-    const { error } = await browserClient().auth.signInWithPassword({ email, password });
+    try {
+      await api('/api/admin/login', { body: { email, password } });
+    } catch (e) {
+      setBusy(false);
+      return setErr(e instanceof ApiError ? e.message : 'Network error — try again.');
+    }
     setBusy(false);
-    if (error) return setErr('Sign-in failed. Check your email and password.');
     router.replace(next && next.startsWith('/admin') ? next : '/admin');
     router.refresh();
   }
