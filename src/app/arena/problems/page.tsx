@@ -87,6 +87,7 @@ export default function ProblemArena() {
   const [pick, setPick] = useState<Problem | null>(null);
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
+  const [tick, setTick] = useState(0);
 
   const load = useCallback(async () => {
     try {
@@ -94,14 +95,26 @@ export default function ProblemArena() {
       setNeedLogin(false);
     } catch (e) {
       if (e instanceof ApiError && e.status === 401) { setNeedLogin(true); setState(null); }
+    } finally {
+      setTick((n) => n + 1);
     }
   }, []);
 
   useEffect(() => {
     load();
-    const t = setInterval(() => document.visibilityState === 'visible' && load(), 8000); // keeps every teammate's device in sync
-    return () => clearInterval(t);
+    const onVisible = () => document.visibilityState === 'visible' && load();
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
   }, [load]);
+
+  // Adaptive, jittered refresh keeps teammates' devices in sync without hammering the
+  // database when 1000 phones are open: fast while choosing, slow once locked or closed.
+  useEffect(() => {
+    if (needLogin || tick === 0) return;
+    const base = !state ? 20000 : state.assignment ? 60000 : state.problems_open ? 12000 : 30000;
+    const t = setTimeout(() => document.visibilityState === 'visible' && load(), base + Math.random() * 5000);
+    return () => clearTimeout(t);
+  }, [tick, needLogin, state, load]);
 
   async function lock() {
     if (!pick) return;

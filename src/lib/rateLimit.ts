@@ -7,9 +7,19 @@ export interface LimitRule { key: string; max: number; windowSeconds: number }
  * Two layers: a strict per-target limit (one team / one employee ID) and a generous
  * per-IP limit (corporate venues often share one NAT address).
  */
+const envInt = (name: string, fallback: number) => {
+  const v = Number(process.env[name]);
+  return Number.isInteger(v) && v > 0 ? v : fallback;
+};
+
+/**
+ * At an in-person event every phone on venue Wi-Fi shares ONE public IP, so the per-IP
+ * ceiling must comfortably exceed the typos of ~1000 people. Brute-force protection comes
+ * from the strict per-team / per-employee limit (5 wrong PINs per 15 min per target).
+ */
 export const LIMITS = {
-  perTarget: { max: 5, windowSeconds: 15 * 60 },
-  perIp: { max: 60, windowSeconds: 15 * 60 },
+  perTarget: { max: envInt('DX_RL_TARGET_MAX', 5), windowSeconds: 15 * 60 },
+  perIp: { max: envInt('DX_RL_IP_MAX', 2000), windowSeconds: 15 * 60 },
 };
 
 export function teamLoginRules(eventId: string, teamNumber: number, ip: string): LimitRule[] {

@@ -28,7 +28,7 @@ export function db(): Db {
   const url = process.env.DX_DATABASE_URL;
   if (url) {
     if (!direct) {
-      const pool = new pg.Pool({ connectionString: url, max: 5 });
+      const pool = new pg.Pool({ connectionString: url, max: Number(process.env.DX_DATABASE_POOL) || 5 });
       if (process.env.DX_DATABASE_ROLE) pool.on('connect', (c) => void c.query(`set role ${process.env.DX_DATABASE_ROLE!.replace(/[^a-z_]/g, '')}`));
       direct = pgDb(pool);
     }

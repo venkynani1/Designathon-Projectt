@@ -54,6 +54,7 @@ export default function GoodiesArena() {
   const [pick, setPick] = useState<Goodie | null>(null);
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
+  const [tick, setTick] = useState(0);
 
   const load = useCallback(async () => {
     try {
@@ -61,13 +62,23 @@ export default function GoodiesArena() {
       setNeedLogin(false);
     } catch (e) {
       if (e instanceof ApiError && e.status === 401) { setNeedLogin(true); setState(null); }
+    } finally {
+      setTick((n) => n + 1);
     }
   }, []);
   useEffect(() => {
     load();
-    const t = setInterval(() => document.visibilityState === 'visible' && load(), 10000);
-    return () => clearInterval(t);
+    const onVisible = () => document.visibilityState === 'visible' && load();
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
   }, [load]);
+  // No polling once the reservation is made (it is permanent); otherwise jittered refresh.
+  useEffect(() => {
+    if (needLogin || tick === 0 || state?.reservation) return;
+    const base = state?.goodies_open ? 20000 : 30000;
+    const t = setTimeout(() => document.visibilityState === 'visible' && load(), base + Math.random() * 5000);
+    return () => clearTimeout(t);
+  }, [tick, needLogin, state, load]);
 
   async function reserve() {
     if (!pick) return;

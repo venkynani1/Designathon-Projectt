@@ -63,10 +63,37 @@ Browser ──► Next.js route handlers (authorize, validate, CSRF origin check
 | Goodies | Event controls → open Goodies Arena (auto-freezes participant changes). |
 | Lost PIN | Superadmin → team → Reissue PIN (reason required) → print slip. |
 
+## Event-day capacity (600–1000 participants)
+
+Load-tested with **250 teams / 1000 participants + 2 phones per team, all from one IP address**
+(`tests/load/arena.load.test.ts`): ~6,600 requests in 33 s at 200 concurrent users on a single
+2-core machine, **zero 5xx, zero 429**, 1000/1000 goodies reserved exactly once, 250/250 problems
+locked exactly once, no overselling, every double-tap safely rejected. Vercel runs many instances
+in parallel, so production latency is far lower than that single-machine run.
+
+Built-in safeguards for a crowd:
+* **Shared venue Wi-Fi:** per-IP limit is 2000 failed PINs / 15 min (`DX_RL_IP_MAX`); brute force is
+  stopped by the strict per-team / per-employee limit (5 / 15 min, `DX_RL_TARGET_MAX`).
+* **Polling:** adaptive and jittered — 12 s while choosing, 60 s once locked, none after a goodie is
+  reserved, paused in background tabs, instant refresh when the tab returns.
+* **Team search** is cached at Vercel's edge for 15 s.
+* **Hot rows** (one problem, one goodie) are serialized with row locks — correctness never depends on timing.
+
+**Recommended plans for the event day**
+| Service | Plan | Why |
+|---|---|---|
+| Vercel | **Pro** | Hobby is for non-commercial use and has lower function concurrency/limits. |
+| Supabase | **Pro + Small compute (or larger)** for the event week | Free tier pauses when idle and has the smallest CPU/connection budget. Scale back down afterwards. |
+
+Before doors open: open both arena pages once (warms functions), confirm the cron secret, and keep a
+printed fallback list of team numbers. Run the load test against a staging copy with
+`DX_LOAD_BASE_URL` / `DX_LOAD_DATABASE_URL` if you change anything.
+
 ## Tests
 ```
 npm test            # unit + PostgreSQL integration (needs Postgres 15+ at DX_TEST_PG)
 npm run test:e2e    # HTTP smoke test against a running server (see tests/e2e header)
+npm run test:load   # 1000-participant load test against a running server (see tests/load header)
 npm run build       # type-check + production build
 ```
 `tests/db/credentials.test.ts` covers every required scenario: 50 teams/200 slots, PIN uniqueness, rename/edit
