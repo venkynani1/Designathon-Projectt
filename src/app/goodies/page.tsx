@@ -1,8 +1,17 @@
 import type { Metadata } from 'next';
-import { GoodiesSurvey } from '@/components/GoodiesSurvey';
+import { GoodiesSurvey, type Feed } from '@/components/GoodiesSurvey';
+import { db } from '@/lib/server/db';
+import { currentEvent } from '@/lib/event';
 
 export const metadata: Metadata = { title: 'Choose your goodie · Designathon X' };
+export const dynamic = 'force-dynamic';
 
-export default function Page() {
-  return <GoodiesSurvey />;
+/** Goodies are rendered on the server, so the page shows counts instantly — no loading spinner. */
+export default async function Page() {
+  let initial: Feed | null = null;
+  try {
+    const ev = await currentEvent(db());
+    initial = await db().rpc<Feed>('survey_feed', { p_event: ev.id });
+  } catch { /* the client fetches it */ }
+  return <GoodiesSurvey initial={initial} />;
 }

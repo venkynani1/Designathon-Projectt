@@ -27,7 +27,7 @@ function LoginForm() {
   }
   return (
     <form onSubmit={submit} className="mt-6 space-y-4">
-      <Field label="Work email"><input className="input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="username" required /></Field>
+      <Field label="Login ID"><input className="input" type="text" autoCapitalize="none" spellCheck={false} value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="username" required /></Field>
       <Field label="Password"><input className="input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" required /></Field>
       {err && <Alert>{err}</Alert>}
       <Button className="w-full" busy={busy}>Sign in</Button>

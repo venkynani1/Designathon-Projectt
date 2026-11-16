@@ -4,18 +4,18 @@ import { api, ApiError } from '@/components/api';
 import { Alert, Button, Field, Modal } from '@/components/ui';
 
 interface Goodie { id: string; name: string; description: string | null; stock: number; left: number; image: string | null }
-interface Feed { event: string; open: boolean; goodies: Goodie[]; at: string }
+export interface Feed { event: string; open: boolean; goodies: Goodie[]; at: string }
 interface Done { goodie: string; name: string; employee_id: string }
 
-const POLL_MS = 4000;
+const POLL_MS = 1500;
 const DONE_KEY = 'dx-goodie-choice';
 
 function readDone(): Done | null {
   try { return JSON.parse(localStorage.getItem(DONE_KEY) ?? 'null'); } catch { return null; }
 }
 
-export function GoodiesSurvey() {
-  const [feed, setFeed] = useState<Feed | null>(null);
+export function GoodiesSurvey({ initial = null }: { initial?: Feed | null }) {
+  const [feed, setFeed] = useState<Feed | null>(initial);
   const [offline, setOffline] = useState(false);
   const [emp, setEmp] = useState('');
   const [name, setName] = useState('');
@@ -26,7 +26,7 @@ export function GoodiesSurvey() {
   const [note, setNote] = useState('');
   const [done, setDone] = useState<Done | null>(null);
   const [flash, setFlash] = useState<Record<string, number>>({});
-  const prev = useRef<Record<string, number>>({});
+  const prev = useRef<Record<string, number>>(initial ? Object.fromEntries(initial.goodies.map((g) => [g.id, g.left])) : {});
 
   const apply = useCallback((f: Feed) => {
     // briefly highlight counts that changed, so people see it's live
@@ -38,12 +38,15 @@ export function GoodiesSurvey() {
     setOffline(false);
   }, []);
 
+  const inFlight = useRef(false);
   const load = useCallback(async () => {
+    if (inFlight.current) return;
+    inFlight.current = true;
     try {
       const res = await fetch('/api/survey/feed', { cache: 'no-store' });
       if (!res.ok) throw new Error();
       apply(await res.json());
-    } catch { setOffline(true); }
+    } catch { setOffline(true); } finally { inFlight.current = false; }
   }, [apply]);
 
   useEffect(() => {

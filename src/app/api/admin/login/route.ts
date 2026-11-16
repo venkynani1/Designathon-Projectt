@@ -24,7 +24,7 @@ export const POST = route(async (req) => {
   const ok = await verifyPassword(rec?.password_hash ?? null, password);
   if (!ok || !rec?.is_active) {
     await recordAttempt(db(), rules, false);
-    throw new DxError('INVALID_CREDENTIALS', 'Email or password is incorrect');
+    throw new DxError('INVALID_CREDENTIALS', 'Login ID or password is incorrect');
   }
   await recordAttempt(db(), rules, true);
   const token = newSessionToken();

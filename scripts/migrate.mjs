@@ -8,8 +8,8 @@
  *  2. Ensures the least-privilege login role `dx_app` (member of service_role) that the app
  *     uses at runtime. Its password is derived from DX_PIN_PEPPER, so no extra secret exists.
  *  3. Seeds db/seed.sql only if the event does not exist yet.
- *  4. Bootstraps the first organizer from DX_BOOTSTRAP_ADMIN_EMAIL / DX_BOOTSTRAP_ADMIN_PASSWORD
- *     if that account does not have a password yet (never overwrites an existing password).
+ *  4. Ensures the organizer login from DX_BOOTSTRAP_ADMIN_EMAIL / DX_BOOTSTRAP_ADMIN_PASSWORD
+ *     (created, or password reset if the env value changed).
  *
  * Connects with the DIRECT (non-pooled) owner connection: DATABASE_URL_UNPOOLED, else DATABASE_URL.
  */
@@ -67,20 +67,21 @@ try {
     console.log('[migrate] seeded db/seed.sql');
   }
 
-  // ---- first organizer (never overwrites an existing password)
+  // ---- organizer login from DX_BOOTSTRAP_ADMIN_EMAIL / DX_BOOTSTRAP_ADMIN_PASSWORD.
+  // The env vars are the source of truth: if the stored password differs, it is reset on deploy.
   const email = process.env.DX_BOOTSTRAP_ADMIN_EMAIL?.trim().toLowerCase();
   const password = process.env.DX_BOOTSTRAP_ADMIN_PASSWORD;
   if (email && password) {
+    const { hash, verify } = await import('@node-rs/argon2');
     const row = (await client.query('select password_hash from admin_users where lower(email) = $1', [email])).rows[0];
-    if (!row?.password_hash) {
-      if (password.length < 12) throw new Error('DX_BOOTSTRAP_ADMIN_PASSWORD must be at least 12 characters');
-      const { hash } = await import('@node-rs/argon2');
+    const same = row?.password_hash ? await verify(row.password_hash, password).catch(() => false) : false;
+    if (!same) {
       const h = await hash(password, { memoryCost: 19456, timeCost: 2, parallelism: 1, outputLen: 32 });
       await client.query(
-        `select upsert_admin_user(p_email => $1, p_display_name => 'Event Owner', p_role => 'superadmin', p_can_issue => true, p_password_hash => $2)`,
+        `select upsert_admin_user(p_email => $1, p_display_name => 'Organizer', p_role => 'superadmin', p_can_issue => true, p_password_hash => $2)`,
         [email, h],
       );
-      console.log(`[migrate] created organizer ${email} (superadmin, credential issuer)`);
+      console.log(`[migrate] organizer login ${email} ${row ? 'password updated' : 'created'} (superadmin)`);
     }
   }
 } finally {
