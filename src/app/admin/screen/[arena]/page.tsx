@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic';
 
 const ARENAS = {
   problems: { title: 'Problem Statement Arena', subtitle: 'Scan, pick your team and enter your Team PIN', path: '/arena/problems' },
-  goodies: { title: 'Goodies Arena', subtitle: 'Scan and sign in with your Employee ID and personal PIN', path: '/arena/goodies' },
+  goodies: { title: 'Choose your goodie', subtitle: 'Scan, enter your Employee ID and name, pick a goodie', path: '/goodies' },
 } as const;
 
 /** Full-screen projector view: a large QR to the arena + Open/Close control + live counts. */

@@ -42,7 +42,10 @@ Browser ──► Next.js route handlers (authorize, validate, CSRF origin check
    Problem statements and goodies are managed in the console (**Problem statements** / **Goodies** pages).
 5. **More organizers / password reset:**
    `DATABASE_URL=<unpooled url> node scripts/create-admin.mjs someone@corp.com registrar "Name" [--issuer]`
-6. **Arena QR codes are shown on screen, not printed:** console → Problem statements / Goodies →
+6. **Goodies survey (before the event, no PIN):** console → **Goodies** to add each goodie with a photo, name and
+   quantity → **Goodies survey** to copy the link / download the QR for the email and **Open survey**. Participants
+   enter employee ID + name, pick one goodie and submit; counts update live. Download the Excel report any time.
+7. **Problem Statement QR is shown on screen, not printed:** console → Problem statements / Goodies →
    **Show QR screen** (full-screen, for a projector) with an **Open / Close arena** button and live counts.
 
 Local: `cp .env.example .env.local`, set `DATABASE_URL`, `npm install`, `npm run db:migrate`, `npm run dev`.

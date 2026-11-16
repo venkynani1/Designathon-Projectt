@@ -247,8 +247,9 @@ describe('10–11. goodies reservations', () => {
     p1Identity = (await slot(teamId(40), 1)).current_identity_id;
   });
 
-  it('opening the Goodies Arena freezes identity changes by default', async () => {
-    const flags = await setFlags({ goodies_open: true });
+  it('opening the goodies survey does NOT freeze edits; the explicit freeze does', async () => {
+    expect(await setFlags({ goodies_open: true })).toMatchObject({ goodies_open: true, member_edits_frozen: false });
+    const flags = await setFlags({ member_edits_frozen: true });
     expect(flags).toMatchObject({ goodies_open: true, member_edits_frozen: true });
     await expectDx(t.db.rpc('add_member', { p_event: t.eventId, p_team: teamId(2), p_member: { name: 'Late', employee_id: 'LATE1' }, p_actor: t.actorId }), 'FROZEN');
     await expectDx(t.db.rpc('add_member', { p_event: t.eventId, p_team: teamId(2), p_member: { name: 'Late', employee_id: 'LATE1' }, p_actor: t.actorId, p_privileged: true, p_reason: 'short' }), 'REASON_REQUIRED');

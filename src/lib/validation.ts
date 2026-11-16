@@ -62,3 +62,14 @@ export const goodieSchema = z.object({
   is_active: z.boolean().optional().default(true),
   sort_order: z.number().int().min(0).max(100000).optional().nullable(),
 });
+
+export const surveySubmitSchema = z.object({
+  employee_id: z.string().trim().min(2, 'Enter your employee ID').max(40),
+  name: z.string().trim().min(2, 'Enter your full name').max(100),
+  goodie_id: z.string().uuid(),
+});
+
+export const photoSchema = z.object({
+  mime: z.enum(['image/jpeg', 'image/png', 'image/webp']),
+  data: z.string().min(10).max(800_000).regex(/^[A-Za-z0-9+/=]+$/, 'Invalid image data'),
+});

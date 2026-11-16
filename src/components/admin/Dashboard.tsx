@@ -39,7 +39,7 @@ export function Dashboard() {
     return () => clearTimeout(h);
   }, [q, load]);
 
-  const frozen = !!sum && (sum.event.goodies_open || sum.event.member_edits_frozen);
+  const frozen = !!sum && sum.event.member_edits_frozen;
   const stat = (label: string, value: number | string, sub?: string) => (
     <Card className="!p-4"><div className="text-xs font-semibold uppercase text-slate-500">{label}</div><div className="text-2xl font-black">{value}</div>{sub && <div className="text-xs text-slate-500">{sub}</div>}</Card>
   );
@@ -52,7 +52,7 @@ export function Dashboard() {
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="mr-auto text-2xl font-black">{sum.event.name} — registrations</h1>
             <Badge tone={sum.event.problems_open ? 'green' : 'slate'}>Problem Arena {sum.event.problems_open ? 'open' : 'closed'}</Badge>
-            <Badge tone={sum.event.goodies_open ? 'green' : 'slate'}>Goodies Arena {sum.event.goodies_open ? 'open' : 'closed'}</Badge>
+            <Badge tone={sum.event.goodies_open ? 'green' : 'slate'}>Goodies survey {sum.event.goodies_open ? 'open' : 'closed'}</Badge>
             {frozen && <Badge tone="amber">Participant edits frozen</Badge>}
           </div>
           <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-6">

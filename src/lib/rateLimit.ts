@@ -51,3 +51,11 @@ export async function enforceRateLimit(db: Db, rules: LimitRule[]): Promise<void
 export async function recordAttempt(db: Db, rules: LimitRule[], success: boolean): Promise<void> {
   await db.rpc('rl_record', { p_keys: rules.map((r) => r.key), p_success: success });
 }
+
+/** Survey: generous per network (whole office may share one IP), tight per employee ID. */
+export function surveyRules(eventId: string, employeeId: string, ip: string): LimitRule[] {
+  return [
+    { key: `survey-emp:${eventId}:${employeeId.toUpperCase().replace(/\s/g, '')}`, max: 10, windowSeconds: 15 * 60 },
+    { key: `ip:${ip}:survey`, ...LIMITS.perIp },
+  ];
+}

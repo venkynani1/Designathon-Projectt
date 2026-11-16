@@ -25,7 +25,7 @@ export default function WalkIn() {
     const f = teams.filter((t) => t.registration_status === 'unregistered' && t.occupied === 0);
     setFree(f);
     setTeamId((cur) => (f.some((t) => t.id === cur) ? cur : f[0]?.id ?? ''));
-    setFrozen(s.event.goodies_open || s.event.member_edits_frozen);
+    setFrozen(s.event.member_edits_frozen);
   }
   useEffect(() => { loadFree().catch((e) => setErr(e.message)); }, []);
 

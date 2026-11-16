@@ -8,7 +8,7 @@ type Flags = { problems_open: boolean; goodies_open: boolean; member_edits_froze
 
 const ITEMS: { key: keyof Flags; title: string; on: string; off: string; warn?: string }[] = [
   { key: 'problems_open', title: 'Problem Statement Arena', on: 'Teams can lock problem statements', off: 'Teams can browse but not lock' },
-  { key: 'goodies_open', title: 'Goodies Arena', on: 'Participants can reserve goodies', off: 'Reservation closed', warn: 'Opening the Goodies Arena also freezes participant changes.' },
+  { key: 'goodies_open', title: 'Goodies survey', on: 'Participants can choose goodies', off: 'Survey closed', warn: undefined },
   { key: 'member_edits_frozen', title: 'Freeze participant changes', on: 'Add / remove / replace need a superadmin privileged exception', off: 'Registrars can change participants' },
 ];
 
