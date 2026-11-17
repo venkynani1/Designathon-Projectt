@@ -3,7 +3,6 @@ import { useCallback, useEffect, useState } from 'react';
 import { api } from '@/components/api';
 import { Alert, Badge, Button, Card, Field, Modal } from '@/components/ui';
 import { useAdmin } from '@/components/admin/AdminContext';
-import { GoodiesTabs } from '@/components/admin/GoodiesTabs';
 
 interface AutoPick { employee_id: string; name: string; token: string; prefs: string[]; pref_names: string[] | null; goodie: string | null; failed: boolean; chosen_at: string | null }
 interface Goodie { id: string; name: string; stock: number; reserved: number; is_active: boolean }
@@ -20,6 +19,8 @@ export default function AutoPicksPage() {
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState('');
   const [origin, setOrigin] = useState('');
+  const [unlocked, setUnlocked] = useState<boolean | null>(null);
+  const [pw, setPw] = useState('');
 
   const load = useCallback(async () => {
     try {
@@ -27,7 +28,13 @@ export default function AutoPicksPage() {
       setRows(a.autopicks); setGoodies(g.goodies);
     } catch (e) { setErr(e instanceof Error ? e.message : 'Failed'); }
   }, []);
-  useEffect(() => { setOrigin((process.env.NEXT_PUBLIC_APP_URL || window.location.origin).replace(/\/+$/, '')); load(); const t = setInterval(load, 5000); return () => clearInterval(t); }, [load]);
+  useEffect(() => { setOrigin((process.env.NEXT_PUBLIC_APP_URL || window.location.origin).replace(/\/+$/, '')); api<{ unlocked: boolean }>('/api/admin/picker/unlock').then((r) => setUnlocked(r.unlocked)).catch(() => setUnlocked(false)); }, []);
+  useEffect(() => { if (!unlocked) return; load(); const t = setInterval(load, 5000); return () => clearInterval(t); }, [load, unlocked]);
+  async function unlock(e: React.FormEvent) {
+    e.preventDefault(); setBusy(true); setErr('');
+    try { await api('/api/admin/picker/unlock', { body: { password: pw } }); setPw(''); setUnlocked(true); }
+    catch (x) { setErr(x instanceof Error ? x.message : 'Failed'); } finally { setBusy(false); }
+  }
 
   const link = (t: string) => `${origin}/goodies/a/${t}`;
   async function copy(text: string, key: string) {
@@ -50,19 +57,31 @@ export default function AutoPicksPage() {
   const togglePref = (id: string) => setEdit((d) => d && ({ ...d, prefs: d.prefs.includes(id) ? d.prefs.filter((x) => x !== id) : [...d.prefs, id] }));
   const allLinks = rows?.map((r) => `${r.name} (${r.employee_id}): ${link(r.token)}`).join('\n') ?? '';
 
+  if (unlocked === null) return <p className="py-12 text-center text-slate-400">Loading…</p>;
+  if (!unlocked) return (
+    <Card className="mx-auto mt-10 max-w-sm">
+      <h1 className="text-xl font-black">Picker</h1>
+      <p className="mt-1 text-sm text-slate-600">Enter the Picker password.</p>
+      <form onSubmit={unlock} className="mt-4 space-y-3">
+        <input className="input" type="password" value={pw} onChange={(e) => setPw(e.target.value)} autoFocus autoComplete="off" />
+        {err && <Alert>{err}</Alert>}
+        <Button className="w-full" busy={busy} disabled={!pw}>Unlock</Button>
+      </form>
+    </Card>
+  );
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-3">
-        <h1 className="mr-auto text-2xl font-black">Goodies</h1>
-        {canEdit && <Button onClick={() => { setErr(''); setEdit({ employee_id: '', name: '', prefs: [] }); }}>+ Add auto-pick</Button>}
+        <h1 className="mr-auto text-2xl font-black">Picker</h1>
+        {unlocked && canEdit && <Button onClick={() => { setErr(''); setEdit({ employee_id: '', name: '', prefs: [] }); }}>+ Add auto-pick</Button>}
       </div>
-      <GoodiesTabs />
       <Card>
-        <h2 className="font-bold">How auto-picks work</h2>
+        <h2 className="font-bold">How it works</h2>
         <p className="mt-1 text-sm text-slate-600">
           Add people with their preferred goodies in order. Once choosing is open, the <strong>first time anyone opens the goodies link or QR</strong>,
           everyone on this list is given their goodie automatically — before any other pick is processed. They don’t need to do anything.
-          Counts drop for everyone right away, and every assignment is recorded in the audit log and the report.
+          Counts drop for everyone right away. Every assignment is recorded in the audit log and marked “Auto-assigned” in the report.
           If a 1st choice has run out, the 2nd is used, and so on. Each person also has an optional link to see what they got.
         </p>
         {!!allLinks && <Button className="mt-3" variant="secondary" onClick={() => copy(allLinks, '__all')}>{copied === '__all' ? 'Copied ✓' : 'Copy everyone’s status links'}</Button>}

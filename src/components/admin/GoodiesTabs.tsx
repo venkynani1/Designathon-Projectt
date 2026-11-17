@@ -5,7 +5,6 @@ import { usePathname } from 'next/navigation';
 const TABS = [
   { href: '/admin/goodies', label: 'Goodies', hint: 'photos, names, counts' },
   { href: '/admin/goodies/participants', label: 'Participants', hint: 'employee IDs & names' },
-  { href: '/admin/goodies/autopicks', label: 'Auto-picks', hint: 'instant picks by personal link' },
   { href: '/admin/survey', label: 'Link, QR & report', hint: 'share, live responses' },
 ];
 
@@ -13,7 +12,7 @@ const TABS = [
 export function GoodiesTabs() {
   const path = usePathname();
   return (
-    <nav className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+    <nav className="grid gap-2 sm:grid-cols-3">
       {TABS.map((t, i) => {
         const on = path === t.href;
         return (

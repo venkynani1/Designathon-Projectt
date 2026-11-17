@@ -1,11 +1,11 @@
 import { z } from 'zod';
 import { route, json, body } from '@/lib/http';
-import { requireAdmin } from '@/lib/auth/admin';
+import { requirePicker } from '@/lib/auth/picker';
 import { db } from '@/lib/server/db';
 import { currentEvent } from '@/lib/event';
 
 export const GET = route(async () => {
-  await requireAdmin({ role: 'viewer' });
+  await requirePicker();
   const ev = await currentEvent(db());
   return json({ autopicks: await db().rpc('admin_autopick_list', { p_event: ev.id }) });
 });
@@ -17,7 +17,7 @@ const schema = z.object({
 });
 
 export const POST = route(async (req) => {
-  const admin = await requireAdmin({ role: 'admin' });
+  const admin = await requirePicker();
   const a = await body(req, schema);
   const ev = await currentEvent(db());
   return json(await db().rpc('admin_autopick_save', { p_event: ev.id, p_employee_id: a.employee_id, p_name: a.name, p_prefs: a.prefs, p_actor: admin.user_id }));
