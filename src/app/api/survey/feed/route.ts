@@ -11,6 +11,7 @@ export const dynamic = 'force-dynamic';
  */
 export const GET = route(async () => {
   const ev = await currentEvent(db());
+  await db().rpc('autopick_run_pending', { p_event: ev.id });
   const feed = await db().rpc('survey_feed', { p_event: ev.id });
   return NextResponse.json(feed, {
     headers: {

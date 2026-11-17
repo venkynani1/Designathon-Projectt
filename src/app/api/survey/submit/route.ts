@@ -11,6 +11,8 @@ export const POST = route(async (req) => {
   const ev = await currentEvent(db());
   const rules = surveyRules(ev.id, input.employee_id, clientIp(req));
   await enforceRateLimit(db(), rules);
+  // committed on its own, so listed people keep their goodies even if this submission fails
+  await db().rpc('autopick_run_pending', { p_event: ev.id });
   try {
     const res = await db().rpc('survey_submit', { p_event: ev.id, p_employee_id: input.employee_id, p_name: input.name, p_goodie: input.goodie_id });
     await recordAttempt(db(), rules, true);

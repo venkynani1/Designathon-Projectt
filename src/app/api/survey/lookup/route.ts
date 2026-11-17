@@ -8,5 +8,6 @@ export const GET = route(async (req) => {
   const emp = (req.nextUrl.searchParams.get('emp') ?? '').trim();
   if (emp.length < 2 || emp.length > 40) throw new DxError('INVALID_INPUT', 'Enter your employee ID');
   const ev = await currentEvent(db());
+  await db().rpc('autopick_run_pending', { p_event: ev.id });
   return json(await db().rpc('survey_lookup', { p_event: ev.id, p_employee_id: emp }));
 });

@@ -160,3 +160,34 @@ describe('goodies participant list', () => {
     expect((await t.db.rpc<{ list_required: boolean }>('survey_lookup', { p_event: t.eventId, p_employee_id: 'X1' })).list_required).toBe(false);
   });
 });
+
+describe('auto-picks', () => {
+  it('assigns everyone on the list at the first public visit after opening, before any survey pick, and logs it', async () => {
+    const mk = async (name: string, stock: number) => (await t.db.rpc<{ id: string }>('admin_upsert_goodie', {
+      p_event: t.eventId, p_id: null, p_name: name, p_description: null, p_stock: stock, p_image_url: null, p_is_active: true, p_sort_order: null, p_actor: t.actorId,
+    })).id;
+    const gold = await mk('Gold pen', 1);
+    const tee = await mk('Tee', 5);
+    await t.db.rpc('set_event_flags', { p_event: t.eventId, p_flags: { goodies_open: false }, p_actor: t.actorId });
+    const a = await t.db.rpc<{ token: string }>('admin_autopick_save', { p_event: t.eventId, p_employee_id: 'ap1', p_name: 'Kiran Das', p_prefs: [gold, tee], p_actor: t.actorId });
+    await t.db.rpc('admin_autopick_save', { p_event: t.eventId, p_employee_id: 'AP2', p_name: 'Nila Sen', p_prefs: [gold, tee], p_actor: t.actorId });
+
+    expect(await t.db.rpc('autopick_run_pending', { p_event: t.eventId })).toBe(0); // closed: nothing happens
+    await expect(t.db.rpc('autopick_claim', { p_token: a.token })).rejects.toSatisfy(dx('ARENA_CLOSED'));
+    await t.db.rpc('set_event_flags', { p_event: t.eventId, p_flags: { goodies_open: true }, p_actor: t.actorId });
+
+    // first outside pick (someone racing for the gold pen) — listed people are assigned first
+    await t.db.rpc('admin_roster_import', { p_event: t.eventId, p_rows: [{ employee_id: 'OUT1', name: 'Out Sider' }], p_replace: false, p_actor: t.actorId });
+    expect(await t.db.rpc('autopick_run_pending', { p_event: t.eventId })).toBe(2); // what the submit/feed/page routes do first
+    await expect(t.db.rpc('survey_submit', { p_event: t.eventId, p_employee_id: 'OUT1', p_name: '', p_goodie: gold })).rejects.toSatisfy(dx('OUT_OF_STOCK'));
+    const list = await t.db.rpc<{ employee_id: string; goodie: string | null }[]>('admin_autopick_list', { p_event: t.eventId });
+    expect(list.find((x) => x.employee_id === 'AP1')?.goodie).toBe('Gold pen');
+    expect(list.find((x) => x.employee_id === 'AP2')?.goodie).toBe('Tee'); // fell back to 2nd preference
+    expect(await t.db.rpc('autopick_run_pending', { p_event: t.eventId })).toBe(0); // idempotent
+    expect((await t.db.rpc<{ goodie: string }>('autopick_claim', { p_token: a.token })).goodie).toBe('Gold pen');
+    const feed = await t.db.rpc<{ goodies: { name: string; left: number }[] }>('survey_feed', { p_event: t.eventId });
+    expect(feed.goodies.find((g) => g.name === 'Tee')?.left).toBe(4);
+    const logged = await t.sql(`select count(*)::int n from audit_logs where action = 'goodie.auto_assigned'`);
+    expect(logged.rows[0].n).toBe(2);
+  });
+});
