@@ -4,10 +4,9 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useAdmin } from './AdminContext';
 
 const LINKS = [
+  { href: '/admin/goodies', label: 'Goodies', min: 'viewer' },
   { href: '/admin', label: 'Registrations', min: 'viewer' },
   { href: '/admin/problems', label: 'Problem statements', min: 'viewer' },
-  { href: '/admin/goodies', label: 'Goodies', min: 'viewer' },
-  { href: '/admin/survey', label: 'Goodies survey', min: 'viewer' },
   { href: '/admin/walk-in', label: 'Walk-in', min: 'registrar' },
   { href: '/admin/import', label: 'Import', min: 'registrar' },
   { href: '/admin/provision', label: 'Teams & credentials', min: 'admin' },
@@ -25,7 +24,7 @@ export function Nav() {
         <span className="font-black tracking-tight text-brand-700">Designathon X</span>
         <nav className="flex flex-wrap gap-1">
           {LINKS.filter((l) => admin.atLeast(l.min)).map((l) => (
-            <Link key={l.href} href={l.href} className={`rounded-lg px-3 py-1.5 text-sm font-medium ${path === l.href ? 'bg-brand-50 text-brand-700' : 'text-slate-600 hover:bg-slate-100'}`}>{l.label}</Link>
+            <Link key={l.href} href={l.href} className={`rounded-lg px-3 py-1.5 text-sm font-medium ${(l.href === '/admin/goodies' ? path.startsWith('/admin/goodies') || path === '/admin/survey' : path === l.href) ? 'bg-brand-50 text-brand-700' : 'text-slate-600 hover:bg-slate-100'}`}>{l.label}</Link>
           ))}
         </nav>
         <div className="ml-auto flex items-center gap-3 text-xs text-slate-500">

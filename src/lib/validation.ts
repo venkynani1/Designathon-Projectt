@@ -65,7 +65,7 @@ export const goodieSchema = z.object({
 
 export const surveySubmitSchema = z.object({
   employee_id: z.string().trim().min(2, 'Enter your employee ID').max(40),
-  name: z.string().trim().min(2, 'Enter your full name').max(100),
+  name: z.string().trim().max(100).default(''), // optional when the employee ID is in the list (the list's name is used)
   goodie_id: z.string().uuid(),
 });
 

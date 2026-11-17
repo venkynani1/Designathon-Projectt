@@ -1,24 +1,32 @@
 'use client';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { api, ApiError } from '@/components/api';
-import { Alert, Button, Field, Modal } from '@/components/ui';
+import { Button, Modal } from '@/components/ui';
 
 interface Goodie { id: string; name: string; description: string | null; stock: number; left: number; image: string | null }
-export interface Feed { event: string; open: boolean; goodies: Goodie[]; at: string }
+interface Pick { who: string; goodie: string; at: string }
+export interface Feed { event: string; open: boolean; list_required?: boolean; goodies: Goodie[]; recent?: Pick[]; chosen_total?: number; at: string }
 interface Done { goodie: string; name: string; employee_id: string }
+interface Lookup { employee_id: string; found: boolean; name: string | null; list_required: boolean; chosen: string | null }
 
 const POLL_MS = 1500;
 const DONE_KEY = 'dx-goodie-choice';
 
-function readDone(): Done | null {
-  try { return JSON.parse(localStorage.getItem(DONE_KEY) ?? 'null'); } catch { return null; }
+function ago(at: string, now: string): string {
+  const s = Math.max(0, Math.round((Date.parse(now) - Date.parse(at)) / 1000));
+  if (s < 10) return 'just now';
+  if (s < 60) return `${s}s ago`;
+  if (s < 3600) return `${Math.floor(s / 60)} min ago`;
+  return `${Math.floor(s / 3600)} h ago`;
 }
 
 export function GoodiesSurvey({ initial = null }: { initial?: Feed | null }) {
   const [feed, setFeed] = useState<Feed | null>(initial);
   const [offline, setOffline] = useState(false);
   const [emp, setEmp] = useState('');
-  const [name, setName] = useState('');
+  const [look, setLook] = useState<Lookup | null>(null);
+  const [looking, setLooking] = useState(false);
+  const [typedName, setTypedName] = useState('');
   const [pick, setPick] = useState<string | null>(null);
   const [confirm, setConfirm] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -27,9 +35,9 @@ export function GoodiesSurvey({ initial = null }: { initial?: Feed | null }) {
   const [done, setDone] = useState<Done | null>(null);
   const [flash, setFlash] = useState<Record<string, number>>({});
   const prev = useRef<Record<string, number>>(initial ? Object.fromEntries(initial.goodies.map((g) => [g.id, g.left])) : {});
+  const inFlight = useRef(false);
 
   const apply = useCallback((f: Feed) => {
-    // briefly highlight counts that changed, so people see it's live
     const changed: Record<string, number> = {};
     for (const g of f.goodies) if (prev.current[g.id] !== undefined && prev.current[g.id] !== g.left) changed[g.id] = Date.now();
     prev.current = Object.fromEntries(f.goodies.map((g) => [g.id, g.left]));
@@ -38,7 +46,6 @@ export function GoodiesSurvey({ initial = null }: { initial?: Feed | null }) {
     setOffline(false);
   }, []);
 
-  const inFlight = useRef(false);
   const load = useCallback(async () => {
     if (inFlight.current) return;
     inFlight.current = true;
@@ -50,7 +57,7 @@ export function GoodiesSurvey({ initial = null }: { initial?: Feed | null }) {
   }, [apply]);
 
   useEffect(() => {
-    setDone(readDone());
+    try { setDone(JSON.parse(localStorage.getItem(DONE_KEY) ?? 'null')); } catch { /* */ }
     load();
     const t = setInterval(() => { if (document.visibilityState === 'visible') load(); }, POLL_MS);
     const vis = () => { if (document.visibilityState === 'visible') load(); };
@@ -58,7 +65,22 @@ export function GoodiesSurvey({ initial = null }: { initial?: Feed | null }) {
     return () => { clearInterval(t); document.removeEventListener('visibilitychange', vis); };
   }, [load]);
 
-  // the goodie someone is looking at just ran out → let them know and clear it
+  // employee ID → name, as they type (debounced)
+  useEffect(() => {
+    const id = emp.trim();
+    setLook(null);
+    if (id.length < 2) { setLooking(false); return; }
+    setLooking(true);
+    const ctl = new AbortController();
+    const t = setTimeout(async () => {
+      try {
+        const r = await fetch(`/api/survey/lookup?emp=${encodeURIComponent(id)}`, { cache: 'no-store', signal: ctl.signal });
+        if (r.ok) setLook(await r.json());
+      } catch { /* aborted or offline */ } finally { if (!ctl.signal.aborted) setLooking(false); }
+    }, 350);
+    return () => { clearTimeout(t); ctl.abort(); };
+  }, [emp]);
+
   const picked = feed?.goodies.find((g) => g.id === pick) ?? null;
   useEffect(() => {
     if (pick && feed && (!picked || picked.left <= 0)) {
@@ -67,6 +89,11 @@ export function GoodiesSurvey({ initial = null }: { initial?: Feed | null }) {
       setConfirm(false);
     }
   }, [feed, pick, picked]);
+
+  const listRequired = look?.list_required ?? feed?.list_required ?? false;
+  const name = look?.found ? look.name ?? '' : typedName;
+  const idOk = !!look && !looking && !look.chosen && (look.found || !listRequired);
+  const ready = idOk && name.trim().length >= 2 && !!picked && !!feed?.open;
 
   async function submit() {
     if (!picked) return;
@@ -78,6 +105,7 @@ export function GoodiesSurvey({ initial = null }: { initial?: Feed | null }) {
       try { localStorage.setItem(DONE_KEY, JSON.stringify(d)); } catch { /* private mode */ }
       setDone(d);
       setConfirm(false);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (e) {
       setConfirm(false);
       if (e instanceof ApiError && e.code === 'OUT_OF_STOCK') { setPick(null); load(); }
@@ -85,97 +113,154 @@ export function GoodiesSurvey({ initial = null }: { initial?: Feed | null }) {
     } finally { setBusy(false); }
   }
 
-  const ready = emp.trim().length >= 2 && name.trim().length >= 2 && !!picked;
   const totalLeft = feed?.goodies.reduce((s, g) => s + g.left, 0) ?? 0;
+  const recent = feed?.recent ?? [];
 
   return (
-    <main className="mx-auto min-h-screen max-w-3xl px-4 pb-32 pt-6">
-      <header className="mb-5">
-        <p className="text-sm font-semibold uppercase tracking-wide text-brand-600">{feed?.event ?? 'Designathon X'}</p>
-        <h1 className="text-3xl font-black tracking-tight">Choose your goodie</h1>
-        <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-slate-600">
-          <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold ${offline ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'}`}>
-            <span className={`h-2 w-2 rounded-full ${offline ? 'bg-amber-500' : 'animate-pulse bg-emerald-500'}`} />
-            {offline ? 'Reconnecting…' : 'Live counts'}
-          </span>
-          {feed && <span>{totalLeft} goodies left across {feed.goodies.length} options</span>}
+    <div className="min-h-screen bg-slate-50 pb-28">
+      <header className="bg-gradient-to-br from-brand-700 via-brand-600 to-indigo-500 px-4 pb-16 pt-8 text-white">
+        <div className="mx-auto max-w-3xl">
+          <p className="text-xs font-bold uppercase tracking-[0.25em] text-white/70">{feed?.event ?? 'Designathon X'}</p>
+          <h1 className="mt-1 text-3xl font-black tracking-tight sm:text-4xl">Pick your goodie 🎁</h1>
+          <p className="mt-1 text-white/85">Enter your employee ID, choose one, and you’re done.</p>
+          <div className="mt-4 flex flex-wrap items-center gap-2 text-sm">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 font-semibold backdrop-blur">
+              <span className={`h-2 w-2 rounded-full ${offline ? 'bg-amber-300' : 'animate-pulse bg-emerald-300'}`} />
+              {offline ? 'Reconnecting…' : 'Live'}
+            </span>
+            {feed && <span className="rounded-full bg-white/15 px-3 py-1 backdrop-blur">{totalLeft} left</span>}
+            {!!feed?.chosen_total && <span className="rounded-full bg-white/15 px-3 py-1 backdrop-blur">{feed.chosen_total} picked so far</span>}
+          </div>
         </div>
       </header>
 
-      {done ? (
-        <div className="rounded-3xl bg-white p-8 text-center shadow-sm ring-1 ring-slate-200">
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 text-3xl text-emerald-700">✓</div>
-          <h2 className="mt-4 text-2xl font-black">You’re all set, {done.name.split(' ')[0]}!</h2>
-          <p className="mt-2 text-slate-600">Your goodie: <strong className="text-slate-900">{done.goodie}</strong></p>
-          <p className="mt-1 text-sm text-slate-500">Employee ID {done.employee_id}. Collect it at the event.</p>
-          <button className="mt-6 text-xs text-slate-400 underline" onClick={() => { try { localStorage.removeItem(DONE_KEY); } catch { /* */ } setDone(null); }}>
-            Submitting for someone else on this phone?
-          </button>
-        </div>
-      ) : (
-        <>
-          {feed && !feed.open && <Alert tone="amber">The goodies survey is closed right now. You can see what’s available — come back when it opens.</Alert>}
-
-          <section className="mt-4 grid gap-3 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200 sm:grid-cols-2">
-            <Field label="Employee ID">
-              <input className="input" value={emp} onChange={(e) => setEmp(e.target.value.toUpperCase().replace(/\s/g, ''))} maxLength={40}
-                     autoCapitalize="characters" autoComplete="off" placeholder="e.g. EMP10234" />
-            </Field>
-            <Field label="Full name">
-              <input className="input" value={name} onChange={(e) => setName(e.target.value)} maxLength={100} autoComplete="name" placeholder="Your name" />
-            </Field>
+      <main className="mx-auto -mt-10 max-w-3xl space-y-4 px-4">
+        {done ? (
+          <section className="rounded-3xl bg-white p-8 text-center shadow-lg ring-1 ring-slate-200">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 text-3xl text-emerald-700">✓</div>
+            <h2 className="mt-4 text-2xl font-black">You’re all set, {done.name.split(' ')[0]}!</h2>
+            <p className="mt-2 text-slate-600">Your goodie: <strong className="text-slate-900">{done.goodie}</strong></p>
+            <p className="mt-1 text-sm text-slate-500">Employee ID {done.employee_id}</p>
+            <button className="mt-6 text-xs text-slate-400 underline" onClick={() => { try { localStorage.removeItem(DONE_KEY); } catch { /* */ } setDone(null); setEmp(''); setPick(null); setTypedName(''); }}>
+              Choosing for someone else on this phone?
+            </button>
           </section>
+        ) : (
+          <>
+            {feed && !feed.open && (
+              <div className="rounded-2xl bg-amber-50 p-4 text-sm font-medium text-amber-900 shadow ring-1 ring-amber-200">
+                Choosing isn’t open right now. You can see what’s available — come back when it opens.
+              </div>
+            )}
 
-          <h2 className="mb-2 mt-6 text-sm font-bold uppercase tracking-wide text-slate-500">Tap one goodie</h2>
-          {note && <div className="mb-3"><Alert tone="amber">{note}</Alert></div>}
-          {err && <div className="mb-3"><Alert>{err}</Alert></div>}
-          {!feed && !offline && <p className="py-12 text-center text-slate-400">Loading goodies…</p>}
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-            {feed?.goodies.map((g) => {
-              const out = g.left <= 0;
-              const sel = pick === g.id;
-              const changed = flash[g.id] && Date.now() - flash[g.id] < 2500;
-              return (
-                <button key={g.id} type="button" disabled={out || !feed.open}
-                  onClick={() => { setPick(g.id); setNote(''); setErr(''); }}
-                  aria-pressed={sel}
-                  className={`relative overflow-hidden rounded-2xl bg-white text-left shadow-sm ring-2 transition ${sel ? 'ring-brand-600' : 'ring-transparent'} ${out ? 'opacity-50 grayscale' : 'hover:shadow-md'} disabled:cursor-not-allowed`}>
-                  <div className="aspect-square w-full bg-slate-100">
-                    {g.image
-                      // eslint-disable-next-line @next/next/no-img-element
-                      ? <img src={g.image} alt={g.name} className="h-full w-full object-cover" loading="lazy" />
-                      : <div className="flex h-full items-center justify-center text-4xl text-slate-300">🎁</div>}
+            <section className="rounded-3xl bg-white p-5 shadow-lg ring-1 ring-slate-200">
+              <label className="block text-xs font-bold uppercase tracking-wide text-slate-500" htmlFor="emp">Your employee ID</label>
+              <input id="emp" className="input mt-1 h-12 text-lg font-semibold tracking-wide" value={emp}
+                onChange={(e) => { setEmp(e.target.value.toUpperCase().replace(/\s/g, '')); setErr(''); }}
+                maxLength={40} autoCapitalize="characters" autoComplete="off" placeholder="e.g. EMP10234" />
+              <div className="mt-3 min-h-[3rem]">
+                {looking && <p className="text-sm text-slate-400">Checking…</p>}
+                {!looking && look?.chosen && (
+                  <div className="rounded-xl bg-emerald-50 p-3 text-sm text-emerald-900 ring-1 ring-emerald-200">
+                    <strong>{look.name ?? look.employee_id}</strong> has already chosen <strong>{look.chosen}</strong>. Only one goodie per person.
                   </div>
-                  {sel && <span className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-brand-600 text-sm font-bold text-white">✓</span>}
-                  <div className="p-3">
-                    <p className="font-bold leading-tight">{g.name}</p>
-                    {g.description && <p className="mt-0.5 line-clamp-2 text-xs text-slate-500">{g.description}</p>}
-                    <p className={`mt-2 text-sm font-bold transition-colors ${out ? 'text-rose-600' : g.left <= Math.max(3, g.stock * 0.1) ? 'text-amber-600' : 'text-emerald-700'} ${changed ? 'rounded bg-yellow-100 px-1' : ''}`}>
-                      {out ? 'Not available' : `${g.left} available`}
-                    </p>
+                )}
+                {!looking && look && !look.chosen && look.found && (
+                  <div className="flex items-center gap-3 rounded-xl bg-brand-50 p-3 ring-1 ring-brand-100">
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-600 text-lg font-black text-white">{(look.name ?? '?').charAt(0)}</span>
+                    <div><p className="text-xs text-slate-500">Hi there 👋</p><p className="font-bold text-slate-900">{look.name}</p></div>
+                    <span className="ml-auto text-xl text-emerald-600">✓</span>
                   </div>
-                </button>
-              );
-            })}
-          </div>
-          {feed && feed.goodies.length === 0 && <p className="py-12 text-center text-slate-500">No goodies have been added yet.</p>}
+                )}
+                {!looking && look && !look.chosen && !look.found && listRequired && (
+                  <div className="rounded-xl bg-rose-50 p-3 text-sm text-rose-900 ring-1 ring-rose-200">
+                    We couldn’t find <strong>{look.employee_id}</strong> in the participant list. Check the ID, or contact the organizers.
+                  </div>
+                )}
+                {!looking && look && !look.chosen && !look.found && !listRequired && (
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wide text-slate-500" htmlFor="nm">Your full name</label>
+                    <input id="nm" className="input mt-1 h-12" value={typedName} onChange={(e) => setTypedName(e.target.value)} maxLength={100} autoComplete="name" placeholder="Your name" />
+                  </div>
+                )}
+                {!look && !looking && <p className="text-sm text-slate-400">Your name will appear once we find your ID.</p>}
+              </div>
+            </section>
 
-          <div className="fixed inset-x-0 bottom-0 border-t border-slate-200 bg-white/95 p-3 backdrop-blur">
-            <div className="mx-auto flex max-w-3xl items-center gap-3">
-              <p className="min-w-0 flex-1 truncate text-sm text-slate-600">
-                {picked ? <>Selected: <strong className="text-slate-900">{picked.name}</strong></> : 'Pick a goodie above'}
-              </p>
-              <Button disabled={!ready || !feed?.open} onClick={() => { setErr(''); setConfirm(true); }}>Submit</Button>
-            </div>
+            {recent.length > 0 && feed && (
+              <section className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200">
+                <p className="flex items-center gap-2 px-4 pt-3 text-xs font-bold uppercase tracking-wide text-slate-500">
+                  <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" /> Just picked
+                </p>
+                <ul className="flex gap-2 overflow-x-auto px-4 py-3 [scrollbar-width:none]">
+                  {recent.map((r, i) => (
+                    <li key={`${r.at}-${i}`} className="shrink-0 rounded-full bg-slate-100 px-3 py-1.5 text-sm">
+                      <strong>{r.who}</strong> → {r.goodie} <span className="text-xs text-slate-400">· {ago(r.at, feed.at)}</span>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
+
+            <section>
+              <h2 className="mb-2 mt-2 px-1 text-sm font-bold uppercase tracking-wide text-slate-500">Tap one goodie</h2>
+              {note && <div className="mb-3 rounded-xl bg-amber-50 p-3 text-sm font-medium text-amber-900 ring-1 ring-amber-200">{note}</div>}
+              {err && <div className="mb-3 rounded-xl bg-rose-50 p-3 text-sm font-medium text-rose-900 ring-1 ring-rose-200">{err}</div>}
+              {!feed && !offline && <p className="py-12 text-center text-slate-400">Loading goodies…</p>}
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                {feed?.goodies.map((g) => {
+                  const out = g.left <= 0;
+                  const sel = pick === g.id;
+                  const changed = flash[g.id] && Date.now() - flash[g.id] < 2500;
+                  const pct = g.stock ? Math.round((g.left / g.stock) * 100) : 0;
+                  return (
+                    <button key={g.id} type="button" disabled={out || !feed.open}
+                      onClick={() => { setPick(g.id); setNote(''); setErr(''); }} aria-pressed={sel}
+                      className={`relative overflow-hidden rounded-2xl bg-white text-left shadow-sm ring-2 transition active:scale-[0.98] ${sel ? 'ring-brand-600 shadow-lg' : 'ring-transparent'} ${out ? 'opacity-50 grayscale' : 'hover:shadow-md'} disabled:cursor-not-allowed`}>
+                      <div className="aspect-square w-full bg-slate-100">
+                        {g.image
+                          // eslint-disable-next-line @next/next/no-img-element
+                          ? <img src={g.image} alt={g.name} className="h-full w-full object-cover" loading="lazy" />
+                          : <div className="flex h-full items-center justify-center text-5xl text-slate-300">🎁</div>}
+                      </div>
+                      {sel && <span className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full bg-brand-600 font-bold text-white shadow">✓</span>}
+                      {out && <span className="absolute left-2 top-2 rounded-full bg-rose-600 px-2.5 py-1 text-xs font-bold text-white">Not available</span>}
+                      <div className="p-3">
+                        <p className="font-bold leading-tight">{g.name}</p>
+                        {g.description && <p className="mt-0.5 line-clamp-2 text-xs text-slate-500">{g.description}</p>}
+                        <p className={`mt-2 text-sm font-bold tabular-nums transition-colors ${out ? 'text-rose-600' : pct <= 15 ? 'text-amber-600' : 'text-emerald-700'} ${changed ? 'rounded bg-yellow-100 px-1' : ''}`}>
+                          {out ? 'All gone' : `${g.left} of ${g.stock} left`}
+                        </p>
+                        <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-slate-100">
+                          <div className={`h-full rounded-full transition-all duration-700 ${pct <= 15 ? 'bg-amber-500' : 'bg-emerald-500'}`} style={{ width: `${pct}%` }} />
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+              {feed && feed.goodies.length === 0 && <p className="py-12 text-center text-slate-500">No goodies have been added yet.</p>}
+            </section>
+          </>
+        )}
+      </main>
+
+      {!done && (
+        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white/95 p-3 backdrop-blur">
+          <div className="mx-auto flex max-w-3xl items-center gap-3">
+            <p className="min-w-0 flex-1 truncate text-sm text-slate-600">
+              {picked ? <>Selected: <strong className="text-slate-900">{picked.name}</strong></> : !idOk ? 'Enter your employee ID' : 'Tap a goodie'}
+            </p>
+            <Button className="px-6" disabled={!ready} onClick={() => { setErr(''); setConfirm(true); }}>Submit</Button>
           </div>
-        </>
+        </div>
       )}
 
       <Modal open={confirm && !!picked} title="Confirm your choice" onClose={() => setConfirm(false)}>
         {picked && (
           <div className="space-y-3">
             <p><strong>{name.trim()}</strong> ({emp}) is choosing <strong>{picked.name}</strong>.</p>
-            <p className="text-sm text-slate-500">You can choose only once and it can’t be changed afterwards.</p>
+            <p className="text-sm text-slate-500">One goodie per person — it can’t be changed afterwards.</p>
             <div className="flex justify-end gap-2">
               <Button variant="secondary" onClick={() => setConfirm(false)}>Back</Button>
               <Button busy={busy} onClick={submit}>Yes, submit</Button>
@@ -183,6 +268,6 @@ export function GoodiesSurvey({ initial = null }: { initial?: Feed | null }) {
           </div>
         )}
       </Modal>
-    </main>
+    </div>
   );
 }

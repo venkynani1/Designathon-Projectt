@@ -4,6 +4,7 @@ import { api } from '@/components/api';
 import { Alert, Badge, Button, Field, Modal } from '@/components/ui';
 import { useAdmin } from '@/components/admin/AdminContext';
 import { ArenaBar } from '@/components/admin/ArenaBar';
+import { GoodiesTabs } from '@/components/admin/GoodiesTabs';
 
 interface Goodie { id: string; name: string; description: string | null; stock: number; image_url: string | null; has_photo: boolean; is_active: boolean; sort_order: number; reserved: number; collected: number }
 type Draft = { id?: string; name: string; description: string; stock: number; is_active: boolean; sort_order?: number; preview: string | null; photo: { mime: string; data: string } | null; removePhoto?: boolean };
@@ -64,9 +65,9 @@ export default function GoodiesPage() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-3">
         <h1 className="mr-auto text-2xl font-black">Goodies</h1>
-        <a href="/admin/survey" className="rounded-lg px-3 py-2 text-sm font-semibold text-brand-700 hover:bg-brand-50">Survey responses →</a>
         {canEdit && <Button onClick={() => { setErr(''); setEdit({ ...empty }); }}>+ Add goodie</Button>}
       </div>
+      <GoodiesTabs />
       <ArenaBar arena="goodies" />
       {msg && <Alert tone="green">{msg}</Alert>}
       {err && <Alert>{err}</Alert>}

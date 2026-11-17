@@ -22,7 +22,7 @@ function LoginForm() {
       return setErr(e instanceof ApiError ? e.message : 'Network error — try again.');
     }
     setBusy(false);
-    router.replace(next && next.startsWith('/admin') ? next : '/admin');
+    router.replace(next && next.startsWith('/admin') ? next : '/admin/goodies');
     router.refresh();
   }
   return (

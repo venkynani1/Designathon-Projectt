@@ -111,3 +111,52 @@ describe('goodies survey (no PIN)', () => {
     expect(f2.goodies.find((g) => g.name === 'Mug')?.image).toBe(`/api/survey/image/${mug}?v=1`);
   });
 });
+
+describe('goodies participant list', () => {
+  it('imports, looks up names, restricts to the list and reports who is pending', async () => {
+    const res = await t.db.rpc<{ added: number; updated: number; skipped: { problem: string }[]; total: number }>('admin_roster_import', {
+      p_event: t.eventId, p_replace: true, p_actor: t.actorId,
+      p_rows: [
+        { employee_id: 'l 100', name: '  Asha   Rao ', email: 'ASHA@x.com', department: 'Design' },
+        { employee_id: 'L101', name: 'Ravi Kumar' },
+        { employee_id: 'L101', name: 'Dup' },
+        { employee_id: '!', name: 'Bad Id' },
+        { employee_id: 'L102', name: '' },
+      ],
+    });
+    expect(res).toMatchObject({ added: 2, updated: 0, total: 2 });
+    expect(res.skipped.map((s) => s.problem)).toEqual(['duplicate in file (first one kept)', 'invalid employee ID', 'missing name']);
+
+    const look = await t.db.rpc<{ found: boolean; name: string; list_required: boolean; chosen: string | null }>('survey_lookup', { p_event: t.eventId, p_employee_id: 'l100' });
+    expect(look).toMatchObject({ found: true, name: 'Asha Rao', list_required: true, chosen: null });
+    expect((await t.db.rpc<{ found: boolean }>('survey_lookup', { p_event: t.eventId, p_employee_id: 'NOPE1' })).found).toBe(false);
+
+    const g = (await t.db.rpc<{ id: string }>('admin_upsert_goodie', {
+      p_event: t.eventId, p_id: null, p_name: 'Sticker pack', p_description: null, p_stock: 10, p_image_url: null,
+      p_is_active: true, p_sort_order: null, p_actor: t.actorId,
+    })).id;
+    await t.db.rpc('set_event_flags', { p_event: t.eventId, p_flags: { goodies_open: true }, p_actor: t.actorId });
+    await expect(t.db.rpc('survey_submit', { p_event: t.eventId, p_employee_id: 'NOPE1', p_name: 'Some One', p_goodie: g })).rejects.toSatisfy(dx('NOT_FOUND'));
+    // typed name is ignored — the list's name wins
+    const ok = await t.db.rpc<{ name: string }>('survey_submit', { p_event: t.eventId, p_employee_id: 'L100', p_name: 'x', p_goodie: g });
+    expect(ok.name).toBe('Asha Rao');
+    const feed = await t.db.rpc<{ recent: { who: string; goodie: string }[]; list_required: boolean }>('survey_feed', { p_event: t.eventId });
+    expect(feed.recent[0]).toMatchObject({ who: 'Asha', goodie: 'Sticker pack' });
+    expect(feed.list_required).toBe(true);
+
+    const rep = await t.db.rpc<{ pending: { employee_id: string }[]; roster_size: number }>('admin_survey_report', { p_event: t.eventId });
+    expect(rep.roster_size).toBe(2);
+    expect(rep.pending.map((p) => p.employee_id)).toContain('L101');
+    expect(rep.pending.map((p) => p.employee_id)).not.toContain('L100');
+
+    // edit: can't change the ID of someone who already chose; name fix flows into the report
+    await expect(t.db.rpc('admin_roster_save', { p_event: t.eventId, p_employee_id: 'L999', p_name: 'Asha Rao', p_email: null, p_department: null, p_original: 'L100', p_actor: t.actorId }))
+      .rejects.toSatisfy(dx('INVALID_STATE'));
+    await t.db.rpc('admin_roster_save', { p_event: t.eventId, p_employee_id: 'L100', p_name: 'Asha R. Rao', p_email: null, p_department: null, p_original: 'L100', p_actor: t.actorId });
+    const list = await t.db.rpc<{ employee_id: string; name: string; goodie: string | null }[]>('admin_roster_list', { p_event: t.eventId });
+    expect(list.find((p) => p.employee_id === 'L100')).toMatchObject({ name: 'Asha R. Rao', goodie: 'Sticker pack' });
+
+    expect(await t.db.rpc('admin_roster_clear', { p_event: t.eventId, p_actor: t.actorId })).toBe(2);
+    expect((await t.db.rpc<{ list_required: boolean }>('survey_lookup', { p_event: t.eventId, p_employee_id: 'X1' })).list_required).toBe(false);
+  });
+});

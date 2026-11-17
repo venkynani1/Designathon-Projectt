@@ -4,9 +4,10 @@ import { api, download } from '@/components/api';
 import { Alert, Badge, Button, Card, teamLabel } from '@/components/ui';
 import { useAdmin } from '@/components/admin/AdminContext';
 import { ArenaBar } from '@/components/admin/ArenaBar';
+import { GoodiesTabs } from '@/components/admin/GoodiesTabs';
 
 interface Choice { employee_id: string; name: string; goodie: string; chosen_at: string; registered: boolean; registered_name: string | null; email: string | null; team_number: number | null; team_name: string | null }
-interface Pending { employee_id: string; name: string; email: string | null; team_number: number; team_name: string | null }
+interface Pending { employee_id: string; name: string; email: string | null; department: string | null; team_number: number | null; team_name: string | null }
 interface G { id: string; name: string; stock: number; reserved: number; is_active: boolean }
 interface Report { choices: Choice[]; pending: Pending[]; goodies: G[] }
 
@@ -45,10 +46,10 @@ export default function SurveyPage() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-3">
-        <h1 className="mr-auto text-2xl font-black">Goodies survey</h1>
-        <a href="/admin/goodies" className="rounded-lg px-3 py-2 text-sm font-semibold text-brand-700 hover:bg-brand-50">Edit goodies →</a>
+        <h1 className="mr-auto text-2xl font-black">Goodies</h1>
         <Button variant="secondary" onClick={() => download('/api/admin/survey/export').catch((e) => setErr(e.message))}>Download Excel report</Button>
       </div>
+      <GoodiesTabs />
       <ArenaBar arena="goodies" />
       {msg && <Alert tone="green">{msg}</Alert>}
       {err && <Alert>{err}</Alert>}
@@ -105,14 +106,14 @@ export default function SurveyPage() {
         <div className="overflow-x-auto">
           {tab === 'choices' ? (
             <table className="w-full text-left text-sm">
-              <thead className="text-xs uppercase text-slate-500"><tr><th className="py-2 pr-3">Employee ID</th><th className="pr-3">Name</th><th className="pr-3">Goodie</th><th className="pr-3">Team</th><th className="pr-3">When</th><th /></tr></thead>
+              <thead className="text-xs uppercase text-slate-500"><tr><th className="py-2 pr-3">Employee ID</th><th className="pr-3">Name</th><th className="pr-3">Goodie</th><th className="pr-3">List</th><th className="pr-3">When</th><th /></tr></thead>
               <tbody className="divide-y divide-slate-100">
                 {choices.map((c) => (
                   <tr key={c.employee_id}>
                     <td className="py-2 pr-3 font-mono">{c.employee_id}</td>
                     <td className="pr-3">{c.name}{c.registered_name && c.registered_name.toLowerCase() !== c.name.toLowerCase() && <span className="block text-xs text-slate-400">registered as {c.registered_name}</span>}</td>
                     <td className="pr-3 font-medium">{c.goodie}</td>
-                    <td className="pr-3">{c.registered ? (c.team_number ? teamLabel(c.team_number) : '—') : <Badge tone="amber">ID not registered</Badge>}</td>
+                    <td className="pr-3">{c.registered ? (c.team_number ? teamLabel(c.team_number) : '✓ in list') : <Badge tone="amber">Not in list</Badge>}</td>
                     <td className="whitespace-nowrap pr-3 text-slate-500">{when(c.chosen_at)}</td>
                     <td className="text-right">{admin.atLeast('admin') && <button className="text-xs font-semibold text-rose-700 hover:underline" onClick={() => reset(c)}>Clear</button>}</td>
                   </tr>
@@ -122,10 +123,10 @@ export default function SurveyPage() {
             </table>
           ) : (
             <table className="w-full text-left text-sm">
-              <thead className="text-xs uppercase text-slate-500"><tr><th className="py-2 pr-3">Employee ID</th><th className="pr-3">Name</th><th className="pr-3">Email</th><th className="pr-3">Team</th></tr></thead>
+              <thead className="text-xs uppercase text-slate-500"><tr><th className="py-2 pr-3">Employee ID</th><th className="pr-3">Name</th><th className="pr-3">Email</th><th className="pr-3">Team / dept.</th></tr></thead>
               <tbody className="divide-y divide-slate-100">
                 {pending.map((p) => (
-                  <tr key={p.employee_id}><td className="py-2 pr-3 font-mono">{p.employee_id}</td><td className="pr-3">{p.name}</td><td className="pr-3 text-slate-500">{p.email ?? '—'}</td><td className="pr-3">{teamLabel(p.team_number)}</td></tr>
+                  <tr key={p.employee_id}><td className="py-2 pr-3 font-mono">{p.employee_id}</td><td className="pr-3">{p.name}</td><td className="pr-3 text-slate-500">{p.email ?? '—'}</td><td className="pr-3">{p.team_number ? teamLabel(p.team_number) : p.department ?? '—'}</td></tr>
                 ))}
                 {pending.length === 0 && <tr><td colSpan={4} className="py-8 text-center text-slate-400">Everyone registered has chosen.</td></tr>}
               </tbody>
