@@ -4,9 +4,9 @@ import { api } from '@/components/api';
 import { Alert, Badge, Button, Card, Field, Modal } from '@/components/ui';
 import { useAdmin } from '@/components/admin/AdminContext';
 
-interface AutoPick { employee_id: string; name: string; token: string; prefs: string[]; pref_names: string[] | null; goodie: string | null; failed: boolean; chosen_at: string | null }
+interface AutoPick { employee_id: string; name: string; token: string; prefs: string[]; pref_names: string[] | null; goodie: string | null; failed: boolean; meal: 'veg' | 'nonveg' | null; chosen_at: string | null }
 interface Goodie { id: string; name: string; stock: number; reserved: number; is_active: boolean }
-type Draft = { employee_id: string; name: string; prefs: string[]; editing?: boolean };
+type Draft = { employee_id: string; name: string; prefs: string[]; meal: 'veg' | 'nonveg' | null; editing?: boolean };
 
 export default function AutoPicksPage() {
   const admin = useAdmin();
@@ -44,7 +44,7 @@ export default function AutoPicksPage() {
     if (!edit) return;
     setBusy(true); setErr('');
     try {
-      const r = await api<{ token: string }>('/api/admin/autopicks', { body: { employee_id: edit.employee_id, name: edit.name, prefs: edit.prefs } });
+      const r = await api<{ token: string }>('/api/admin/autopicks', { body: { employee_id: edit.employee_id, name: edit.name, prefs: edit.prefs, meal: edit.meal } });
       setEdit(null); await load();
       void r;
       setMsg('Saved. Their goodie will be assigned on the first scan after choosing opens.');
@@ -74,7 +74,7 @@ export default function AutoPicksPage() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-3">
         <h1 className="mr-auto text-2xl font-black">Picker</h1>
-        {unlocked && canEdit && <Button onClick={() => { setErr(''); setEdit({ employee_id: '', name: '', prefs: [] }); }}>+ Add auto-pick</Button>}
+        {unlocked && canEdit && <Button onClick={() => { setErr(''); setEdit({ employee_id: '', name: '', prefs: [], meal: null }); }}>+ Add auto-pick</Button>}
       </div>
       <Card>
         <h2 className="font-bold">How it works</h2>
@@ -93,7 +93,7 @@ export default function AutoPicksPage() {
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead className="text-xs uppercase text-slate-500">
-              <tr><th className="py-2 pr-3">Employee ID</th><th className="pr-3">Name</th><th className="pr-3">Preferences</th><th className="pr-3">Status</th><th /></tr>
+              <tr><th className="py-2 pr-3">Employee ID</th><th className="pr-3">Name</th><th className="pr-3">Preferences</th><th className="pr-3">Meal</th><th className="pr-3">Status</th><th /></tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {rows?.map((a) => (
@@ -101,16 +101,17 @@ export default function AutoPicksPage() {
                   <td className="py-2 pr-3 font-mono">{a.employee_id}</td>
                   <td className="pr-3 font-medium">{a.name}</td>
                   <td className="pr-3 text-slate-600">{(a.pref_names ?? []).map((n, i) => `${i + 1}. ${n}`).join('  ')}</td>
+                  <td className="pr-3">{a.meal === 'veg' ? 'Veg' : a.meal === 'nonveg' ? 'Non-veg' : '—'}</td>
                   <td className="pr-3">{a.goodie ? <Badge tone="green">Assigned: {a.goodie}</Badge> : a.failed ? <Badge tone="red">None left — edit preferences</Badge> : <Badge tone="amber">Waiting for first scan</Badge>}</td>
                   <td className="whitespace-nowrap text-right">
                     <button className="mr-3 text-xs font-semibold text-brand-700 hover:underline" onClick={() => copy(link(a.token), a.employee_id)}>{copied === a.employee_id ? 'Copied ✓' : 'Status link'}</button>
-                    {canEdit && !a.goodie && <button className="mr-3 text-xs font-semibold text-slate-700 hover:underline" onClick={() => { setErr(''); setEdit({ employee_id: a.employee_id, name: a.name, prefs: a.prefs, editing: true }); }}>Edit</button>}
+                    {canEdit && !a.goodie && <button className="mr-3 text-xs font-semibold text-slate-700 hover:underline" onClick={() => { setErr(''); setEdit({ employee_id: a.employee_id, name: a.name, prefs: a.prefs, meal: a.meal, editing: true }); }}>Edit</button>}
                     {canEdit && <button className="text-xs font-semibold text-rose-700 hover:underline" onClick={() => remove(a)}>Remove</button>}
                   </td>
                 </tr>
               ))}
-              {rows && rows.length === 0 && <tr><td colSpan={5} className="py-10 text-center text-slate-400">No auto-picks yet.</td></tr>}
-              {!rows && <tr><td colSpan={5} className="py-10 text-center text-slate-400">Loading…</td></tr>}
+              {rows && rows.length === 0 && <tr><td colSpan={6} className="py-10 text-center text-slate-400">No auto-picks yet.</td></tr>}
+              {!rows && <tr><td colSpan={6} className="py-10 text-center text-slate-400">Loading…</td></tr>}
             </tbody>
           </table>
         </div>
@@ -137,8 +138,16 @@ export default function AutoPicksPage() {
                 })}
               </div>
             </Field>
+            <Field label="Meal">
+              <div className="flex gap-2">
+                {(['veg', 'nonveg'] as const).map((m) => (
+                  <button type="button" key={m} onClick={() => setEdit({ ...edit, meal: m })}
+                    className={`rounded-full px-4 py-1.5 text-sm font-semibold ring-1 ${edit.meal === m ? 'bg-brand-600 text-white ring-brand-600' : 'bg-white text-slate-700 ring-slate-300'}`}>{m === 'veg' ? 'Veg' : 'Non-veg'}</button>
+                ))}
+              </div>
+            </Field>
             {err && <Alert>{err}</Alert>}
-            <div className="flex justify-end gap-2"><Button type="button" variant="secondary" onClick={() => setEdit(null)}>Cancel</Button><Button busy={busy} disabled={!edit.prefs.length || edit.employee_id.length < 2}>Save & copy link</Button></div>
+            <div className="flex justify-end gap-2"><Button type="button" variant="secondary" onClick={() => setEdit(null)}>Cancel</Button><Button busy={busy} disabled={!edit.meal || !edit.prefs.length || edit.employee_id.length < 2}>Save & copy link</Button></div>
           </form>
         )}
       </Modal>

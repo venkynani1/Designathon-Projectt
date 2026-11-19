@@ -14,7 +14,7 @@ export const POST = route(async (req) => {
   // committed on its own, so listed people keep their goodies even if this submission fails
   await db().rpc('autopick_run_pending', { p_event: ev.id });
   try {
-    const res = await db().rpc('survey_submit', { p_event: ev.id, p_employee_id: input.employee_id, p_name: input.name, p_goodie: input.goodie_id });
+    const res = await db().rpc('survey_submit', { p_event: ev.id, p_employee_id: input.employee_id, p_name: input.name, p_goodie: input.goodie_id, p_meal: input.meal });
     await recordAttempt(db(), rules, true);
     return json(res);
   } catch (e) {

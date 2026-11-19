@@ -6,7 +6,9 @@ import { Button, Modal } from '@/components/ui';
 interface Goodie { id: string; name: string; description: string | null; stock: number; left: number; image: string | null }
 interface Pick { who: string; goodie: string; at: string }
 export interface Feed { event: string; open: boolean; list_required?: boolean; goodies: Goodie[]; recent?: Pick[]; chosen_total?: number; at: string }
-interface Done { goodie: string; name: string; employee_id: string }
+type Meal = 'veg' | 'nonveg';
+const MEAL_LABEL: Record<Meal, string> = { veg: 'Veg', nonveg: 'Non-veg' };
+interface Done { goodie: string; name: string; employee_id: string; meal?: Meal | null }
 interface Lookup { employee_id: string; found: boolean; name: string | null; list_required: boolean; chosen: string | null }
 
 const POLL_MS = 1500;
@@ -28,6 +30,7 @@ export function GoodiesSurvey({ initial = null }: { initial?: Feed | null }) {
   const [looking, setLooking] = useState(false);
   const [typedName, setTypedName] = useState('');
   const [pick, setPick] = useState<string | null>(null);
+  const [meal, setMeal] = useState<Meal | null>(null);
   const [confirm, setConfirm] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
@@ -93,15 +96,15 @@ export function GoodiesSurvey({ initial = null }: { initial?: Feed | null }) {
   const listRequired = look?.list_required ?? feed?.list_required ?? false;
   const name = look?.found ? look.name ?? '' : typedName;
   const idOk = !!look && !looking && !look.chosen && (look.found || !listRequired);
-  const ready = idOk && name.trim().length >= 2 && !!picked && !!feed?.open;
+  const ready = idOk && name.trim().length >= 2 && !!picked && !!meal && !!feed?.open;
 
   async function submit() {
     if (!picked) return;
     setBusy(true); setErr('');
     try {
-      const r = await api<Done & { feed: Feed }>('/api/survey/submit', { body: { employee_id: emp, name, goodie_id: picked.id } });
+      const r = await api<Done & { feed: Feed }>('/api/survey/submit', { body: { employee_id: emp, name, goodie_id: picked.id, meal } });
       apply(r.feed);
-      const d = { goodie: r.goodie, name: r.name, employee_id: r.employee_id };
+      const d = { goodie: r.goodie, name: r.name, employee_id: r.employee_id, meal: r.meal ?? meal };
       try { localStorage.setItem(DONE_KEY, JSON.stringify(d)); } catch { /* private mode */ }
       setDone(d);
       setConfirm(false);
@@ -140,8 +143,9 @@ export function GoodiesSurvey({ initial = null }: { initial?: Feed | null }) {
             <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 text-3xl text-emerald-700">✓</div>
             <h2 className="mt-4 text-2xl font-black">You’re all set, {done.name.split(' ')[0]}!</h2>
             <p className="mt-2 text-slate-600">Your goodie: <strong className="text-slate-900">{done.goodie}</strong></p>
+            {done.meal && <p className="mt-1 text-slate-600">Meal: <strong className="text-slate-900">{MEAL_LABEL[done.meal]}</strong></p>}
             <p className="mt-1 text-sm text-slate-500">Employee ID {done.employee_id}</p>
-            <button className="mt-6 text-xs text-slate-400 underline" onClick={() => { try { localStorage.removeItem(DONE_KEY); } catch { /* */ } setDone(null); setEmp(''); setPick(null); setTypedName(''); }}>
+            <button className="mt-6 text-xs text-slate-400 underline" onClick={() => { try { localStorage.removeItem(DONE_KEY); } catch { /* */ } setDone(null); setEmp(''); setPick(null); setTypedName(''); setMeal(null); }}>
               Choosing for someone else on this phone?
             </button>
           </section>
@@ -241,6 +245,23 @@ export function GoodiesSurvey({ initial = null }: { initial?: Feed | null }) {
               </div>
               {feed && feed.goodies.length === 0 && <p className="py-12 text-center text-slate-500">No goodies have been added yet.</p>}
             </section>
+
+            <section className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
+              <h2 className="text-sm font-bold uppercase tracking-wide text-slate-500">Your meal preference</h2>
+              <div className="mt-3 grid grid-cols-2 gap-3" role="radiogroup" aria-label="Meal preference">
+                {(['veg', 'nonveg'] as const).map((m) => (
+                  <button key={m} type="button" role="radio" aria-checked={meal === m} onClick={() => setMeal(m)}
+                    className={`flex items-center justify-center gap-2 rounded-2xl px-4 py-4 text-lg font-bold ring-2 transition active:scale-[0.98] ${meal === m
+                      ? (m === 'veg' ? 'bg-emerald-50 text-emerald-800 ring-emerald-600' : 'bg-rose-50 text-rose-800 ring-rose-600')
+                      : 'bg-white text-slate-700 ring-slate-200'}`}>
+                    <span className={`flex h-5 w-5 items-center justify-center rounded-sm border-2 ${m === 'veg' ? 'border-emerald-600' : 'border-rose-700'}`}>
+                      <span className={`h-2.5 w-2.5 rounded-full ${m === 'veg' ? 'bg-emerald-600' : 'bg-rose-700'}`} />
+                    </span>
+                    {MEAL_LABEL[m]}
+                  </button>
+                ))}
+              </div>
+            </section>
           </>
         )}
       </main>
@@ -249,7 +270,7 @@ export function GoodiesSurvey({ initial = null }: { initial?: Feed | null }) {
         <div className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white/95 p-3 backdrop-blur">
           <div className="mx-auto flex max-w-3xl items-center gap-3">
             <p className="min-w-0 flex-1 truncate text-sm text-slate-600">
-              {picked ? <>Selected: <strong className="text-slate-900">{picked.name}</strong></> : !idOk ? 'Enter your employee ID' : 'Tap a goodie'}
+              {!idOk ? 'Enter your employee ID' : !picked ? 'Tap a goodie' : !meal ? 'Choose Veg or Non-veg' : <><strong className="text-slate-900">{picked.name}</strong> · {MEAL_LABEL[meal]}</>}
             </p>
             <Button className="px-6" disabled={!ready} onClick={() => { setErr(''); setConfirm(true); }}>Submit</Button>
           </div>
@@ -259,8 +280,8 @@ export function GoodiesSurvey({ initial = null }: { initial?: Feed | null }) {
       <Modal open={confirm && !!picked} title="Confirm your choice" onClose={() => setConfirm(false)}>
         {picked && (
           <div className="space-y-3">
-            <p><strong>{name.trim()}</strong> ({emp}) is choosing <strong>{picked.name}</strong>.</p>
-            <p className="text-sm text-slate-500">One goodie per person — it can’t be changed afterwards.</p>
+            <p><strong>{name.trim()}</strong> ({emp}) is choosing <strong>{picked.name}</strong>{meal && <> with a <strong>{MEAL_LABEL[meal]}</strong> meal</>}.</p>
+            <p className="text-sm text-slate-500">One submission per person — it can’t be changed afterwards.</p>
             <div className="flex justify-end gap-2">
               <Button variant="secondary" onClick={() => setConfirm(false)}>Back</Button>
               <Button busy={busy} onClick={submit}>Yes, submit</Button>
