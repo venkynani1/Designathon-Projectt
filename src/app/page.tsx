@@ -8,7 +8,7 @@ export default function Home() {
   return (
     <main className="mx-auto flex min-h-screen max-w-3xl flex-col justify-center gap-8 px-5 py-12">
       <div>
-        <p className="text-sm font-semibold uppercase tracking-widest text-brand-700">Designathon X</p>
+        <p className="text-sm font-semibold uppercase tracking-widest text-brand-700">Gen AI Designathon</p>
         <h1 className="mt-2 text-4xl font-black tracking-tight">Welcome, designers.</h1>
         <p className="mt-2 text-slate-600">Use the credentials printed on your team slip. Keep your personal PIN private.</p>
       </div>

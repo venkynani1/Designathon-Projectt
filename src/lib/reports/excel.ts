@@ -30,7 +30,7 @@ export function goodiesStatus(slots: ReportRow['slots']): string {
 /** Ordinary export: contains NO PINs, hashes or fingerprints by construction. */
 export async function buildTeamReport(eventName: string, rows: ReportRow[]): Promise<Buffer> {
   const wb = new ExcelJS.Workbook();
-  wb.creator = 'Designathon X Credential System';
+  wb.creator = 'Gen AI Designathon Credential System';
   wb.created = new Date();
   const ws = wb.addWorksheet('Teams', { views: [{ state: 'frozen', ySplit: 1 }] });
   ws.columns = REPORT_COLUMNS.map((header) => ({ header, key: header, width: header.includes('Name') || header.includes('Assignment') ? 26 : 16 }));

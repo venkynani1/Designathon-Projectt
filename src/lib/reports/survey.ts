@@ -28,7 +28,7 @@ const MEAL: Record<string, string> = { veg: 'Veg', nonveg: 'Non-veg' };
 export async function buildSurveyReport(eventName: string, d: SurveyReport, auto: Set<string> = new Set(),
   meals: { veg: number; nonveg: number; by_employee: Record<string, string> } = { veg: 0, nonveg: 0, by_employee: {} }): Promise<Buffer> {
   const wb = new ExcelJS.Workbook();
-  wb.creator = 'Designathon X';
+  wb.creator = 'Gen AI Designathon';
   wb.created = new Date();
   sheet(wb, 'Goodie choices',
     [['Employee ID', 16], ['Name', 28], ['Goodie', 24], ['Meal', 10], ['Chosen at (IST)', 20], ['In participant list?', 14], ['Email', 30], ['Department', 20], ['Team', 12], ['How', 16]],

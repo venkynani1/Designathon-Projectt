@@ -39,7 +39,7 @@ export default function AdminLogin() {
   return (
     <main className="flex min-h-screen items-center justify-center px-4">
       <Card className="w-full max-w-sm">
-        <p className="text-xs font-bold uppercase tracking-widest text-brand-700">Designathon X</p>
+        <p className="text-xs font-bold uppercase tracking-widest text-brand-700">Gen AI Designathon</p>
         <h1 className="text-2xl font-black">Organizer console</h1>
         <Suspense><LoginForm /></Suspense>
       </Card>

@@ -1,6 +1,6 @@
 -- Example event + arena content. Adjust before go-live.
 insert into events (code, name, tagline, venue, problems_qr_url, goodies_qr_url, allowed_email_domains)
-values ('designathon-x', 'Designathon X', 'Design. Build. Delight.', 'Main Auditorium',
+values ('designathon-x', 'Gen AI Designathon', 'Design. Build. Delight.', 'Main Auditorium',
         'https://designathon-x.vercel.app/arena/problems', 'https://designathon-x.vercel.app/arena/goodies', null)
 on conflict (code) do nothing;
 
@@ -17,7 +17,7 @@ on conflict (event_id, code) do nothing;
 insert into goodies (event_id, name, description, stock, sort_order)
 select e.id, v.name, v.description, v.stock, v.sort_order
 from events e, (values
-  ('Hoodie', 'Designathon X hoodie (size chosen at pickup)', 60, 1),
+  ('Hoodie', 'Gen AI Designathon hoodie (size chosen at pickup)', 60, 1),
   ('Water bottle', 'Insulated steel bottle', 80, 2),
   ('Sketchbook kit', 'Dot-grid sketchbook + fineliners', 60, 3)
 ) as v(name, description, stock, sort_order)

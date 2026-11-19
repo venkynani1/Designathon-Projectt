@@ -3,7 +3,7 @@ import { GoodiesSurvey, type Feed } from '@/components/GoodiesSurvey';
 import { db } from '@/lib/server/db';
 import { currentEvent } from '@/lib/event';
 
-export const metadata: Metadata = { title: 'Choose your goodie · Designathon X' };
+export const metadata: Metadata = { title: 'Choose your goodie · Gen AI Designathon' };
 export const dynamic = 'force-dynamic';
 
 /** Goodies are rendered on the server, so the page shows counts instantly — no loading spinner. */

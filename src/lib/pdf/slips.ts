@@ -61,7 +61,7 @@ function pinLabel(pin: string | null, state: PinState): string {
 export async function renderSlipsPdf(event: SlipEvent, teams: SlipTeam[], opts: { title?: string } = {}): Promise<Uint8Array> {
   const doc = await PDFDocument.create();
   doc.setTitle(opts.title ?? `${event.name} — Team credential slips`);
-  doc.setCreator('Designathon X Credential System');
+  doc.setCreator('Gen AI Designathon Credential System');
   doc.setProducer('pdf-lib');
   const bold = await doc.embedFont(StandardFonts.HelveticaBold);
   const regular = await doc.embedFont(StandardFonts.Helvetica);

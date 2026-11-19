@@ -21,7 +21,7 @@ export function Nav() {
   return (
     <header className="no-print sticky top-0 z-40 border-b border-slate-200 bg-white/90 backdrop-blur">
       <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3">
-        <span className="font-black tracking-tight text-brand-700">Designathon X</span>
+        <span className="font-black tracking-tight text-brand-700">Gen AI Designathon</span>
         <nav className="flex flex-wrap gap-1">
           {LINKS.filter((l) => admin.atLeast(l.min)).map((l) => (
             <Link key={l.href} href={l.href} className={`rounded-lg px-3 py-1.5 text-sm font-medium ${(l.href === '/admin/goodies' ? path.startsWith('/admin/goodies') || path === '/admin/survey' : path === l.href) ? 'bg-brand-50 text-brand-700' : 'text-slate-600 hover:bg-slate-100'}`}>{l.label}</Link>

@@ -47,7 +47,7 @@ export function QrScreen({ arena, title, subtitle, url, svg, canToggle }: { aren
   return (
     <main className="flex min-h-screen flex-col items-center justify-between bg-white px-6 py-8 text-slate-900">
       <header className="text-center">
-        <p className="text-sm font-bold uppercase tracking-[0.3em] text-brand-700">{s?.event.name ?? 'Designathon X'}</p>
+        <p className="text-sm font-bold uppercase tracking-[0.3em] text-brand-700">{s?.event.name ?? 'Gen AI Designathon'}</p>
         <h1 className="mt-2 text-4xl font-black tracking-tight sm:text-6xl">{title}</h1>
         <p className="mt-2 text-lg text-slate-600 sm:text-2xl">{subtitle}</p>
       </header>
