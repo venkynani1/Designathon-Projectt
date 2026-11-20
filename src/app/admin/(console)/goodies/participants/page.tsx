@@ -9,7 +9,7 @@ interface Person { employee_id: string; name: string; email: string | null; depa
 interface ImportResult { added: number; updated: number; total: number; skipped: { line: number; employee_id: string | null; name: string | null; problem: string }[] }
 type Draft = { original?: string; employee_id: string; name: string; email: string; department: string };
 
-const TEMPLATE = 'Employee ID,Name,Email,Department\nEMP1001,Asha Rao,asha.rao@company.com,Design\nEMP1002,Ravi Kumar,,Engineering\n';
+const TEMPLATE = 'Employee ID,Name\nEMP1001,Asha Rao\nEMP1002,Ravi Kumar\n';
 
 export default function ParticipantsPage() {
   const admin = useAdmin();
@@ -102,7 +102,7 @@ export default function ParticipantsPage() {
           <div className="flex flex-wrap items-start gap-3">
             <div className="mr-auto">
               <h2 className="font-bold">Upload the participant list</h2>
-              <p className="text-sm text-slate-600">Excel (.xlsx) or CSV with columns <strong>Employee ID</strong> and <strong>Name</strong> (Email and Department optional).
+              <p className="text-sm text-slate-600">Excel (.xlsx) or CSV with two columns: <strong>Employee ID</strong> and <strong>Name</strong>.
                 When someone types their employee ID in the survey, their name fills in automatically.</p>
             </div>
             <button type="button" onClick={template} className="text-sm font-semibold text-brand-700 hover:underline">Download template</button>
@@ -153,20 +153,18 @@ export default function ParticipantsPage() {
               </button>
             ))}
           </div>
-          <input className="input ml-auto max-w-xs" placeholder="Search ID, name, email…" value={q} onChange={(e) => setQ(e.target.value)} />
+          <input className="input ml-auto max-w-xs" placeholder="Search ID or name…" value={q} onChange={(e) => setQ(e.target.value)} />
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead className="text-xs uppercase text-slate-500">
-              <tr><th className="py-2 pr-3">Employee ID</th><th className="pr-3">Name</th><th className="pr-3">Email</th><th className="pr-3">Department</th><th className="pr-3">Goodie</th><th /></tr>
+              <tr><th className="py-2 pr-3">Employee ID</th><th className="pr-3">Name</th><th className="pr-3">Goodie</th><th /></tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {shown.slice(0, 500).map((p) => (
                 <tr key={p.employee_id}>
                   <td className="py-2 pr-3 font-mono">{p.employee_id}</td>
                   <td className="pr-3 font-medium">{p.name}</td>
-                  <td className="pr-3 text-slate-500">{p.email ?? '—'}</td>
-                  <td className="pr-3 text-slate-500">{p.department ?? '—'}</td>
                   <td className="pr-3">{p.goodie ? <Badge tone="green">{p.goodie}</Badge> : <span className="text-slate-400">Not yet</span>}</td>
                   <td className="whitespace-nowrap text-right">
                     {canEdit && <>
@@ -177,11 +175,11 @@ export default function ParticipantsPage() {
                 </tr>
               ))}
               {people && shown.length === 0 && (
-                <tr><td colSpan={6} className="py-10 text-center text-slate-400">
+                <tr><td colSpan={4} className="py-10 text-center text-slate-400">
                   {people.length === 0 ? 'No participants yet. Upload the list above — until then anyone can choose by typing their ID and name.' : 'Nobody matches.'}
                 </td></tr>
               )}
-              {!people && <tr><td colSpan={6} className="py-10 text-center text-slate-400">Loading…</td></tr>}
+              {!people && <tr><td colSpan={4} className="py-10 text-center text-slate-400">Loading…</td></tr>}
             </tbody>
           </table>
           {shown.length > 500 && <p className="pt-2 text-xs text-slate-500">Showing 500 of {shown.length} — search to narrow down.</p>}
@@ -195,8 +193,6 @@ export default function ParticipantsPage() {
             <div className="grid grid-cols-2 gap-3">
               <Field label="Employee ID"><input className="input font-mono" value={edit.employee_id} onChange={(e) => setEdit({ ...edit, employee_id: e.target.value.toUpperCase().replace(/\s/g, '') })} required maxLength={40} autoFocus /></Field>
               <Field label="Name"><input className="input" value={edit.name} onChange={(e) => setEdit({ ...edit, name: e.target.value })} required maxLength={100} /></Field>
-              <Field label="Email (optional)"><input className="input" type="email" value={edit.email} onChange={(e) => setEdit({ ...edit, email: e.target.value })} maxLength={200} /></Field>
-              <Field label="Department (optional)"><input className="input" value={edit.department} onChange={(e) => setEdit({ ...edit, department: e.target.value })} maxLength={100} /></Field>
             </div>
             {err && <Alert>{err}</Alert>}
             <div className="flex justify-end gap-2"><Button type="button" variant="secondary" onClick={() => setEdit(null)}>Cancel</Button><Button busy={busy}>Save</Button></div>

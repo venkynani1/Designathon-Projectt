@@ -8,9 +8,9 @@ describe('participant list parsing', () => {
   });
   it('parses pasted lines in either order', () => {
     expect(rosterFromText('Employee ID, Name\nEMP1, Asha Rao\nRavi Kumar\tEMP2\nEMP3 - Meera Iyer')).toEqual([
-      { employee_id: 'EMP1', name: 'Asha Rao', email: undefined },
-      { employee_id: 'EMP2', name: 'Ravi Kumar', email: undefined },
-      { employee_id: 'EMP3', name: 'Meera Iyer', email: undefined },
+      { employee_id: 'EMP1', name: 'Asha Rao' },
+      { employee_id: 'EMP2', name: 'Ravi Kumar' },
+      { employee_id: 'EMP3', name: 'Meera Iyer' },
     ]);
   });
 });
