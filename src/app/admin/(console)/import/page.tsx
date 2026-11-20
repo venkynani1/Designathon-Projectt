@@ -73,7 +73,7 @@ export default function ImportPage() {
       <Card className="space-y-3">
         <div>
           <h2 className="text-lg font-bold">Offline registrations</h2>
-          <p className="text-sm text-slate-600">People who registered offline: upload <strong>Employee ID, Employee Name, Veg/Non-veg and Goodie</strong>.
+          <p className="text-sm text-slate-600">People who registered offline: upload <strong>Employee ID, Employee Name, Team Name, Veg/Non-veg and Goodie</strong>.
             Their goodie is booked straight away (counts drop), and they collect it at the desk with the same QR as everyone else.
             Leave Goodie empty to just add them to the list so they can choose with the goodies QR.</p>
         </div>

@@ -304,7 +304,7 @@ describe('offline registrations and said-No-but-came', () => {
     await mk('Offline Tee', 1);
     const res = await t.db.rpc<{ booked: number; listed: number; skipped: { problem: string }[] }>('admin_offline_import', {
       p_event: t.eventId, p_actor: t.actorId, p_rows: [
-        { employee_id: '7001', name: 'Off One', meal: 'Non Veg', goodie: 'offline tee' },
+        { employee_id: '7001', name: 'Off One', meal: 'Non Veg', goodie: 'offline tee', team: 'Omega Ops' },
         { employee_id: '7002', name: 'Off Two', meal: 'Veg', goodie: 'Offline Tee' },      // out of stock
         { employee_id: '7003', name: 'Off Three', meal: '', goodie: '' },                 // list only
         { employee_id: '7004', name: 'Off Four', meal: 'veg', goodie: 'Unicorn' },        // unknown goodie
@@ -317,6 +317,8 @@ describe('offline registrations and said-No-but-came', () => {
     const v = await t.db.rpc<{ status: string; goodie: string; meal: string }>('collect_checkin', { p_event: t.eventId, p_employee_id: '7001' });
     expect(v).toMatchObject({ status: 'ready', goodie: 'Offline Tee', meal: 'nonveg' });
     expect((await t.db.rpc<Record<string, string>>('admin_choice_via', { p_event: t.eventId }))['7001']).toBe('offline');
+    const tr = await t.db.rpc<{ employee_id: string; team: string }[]>('admin_team_rows', { p_event: t.eventId });
+    expect(tr.find((r) => r.employee_id === '7001')?.team).toBe('Omega Ops');
     // 7003 can now pick with the survey QR
     expect((await t.db.rpc<{ found: boolean; name: string }>('survey_lookup', { p_event: t.eventId, p_employee_id: '7003' }))).toMatchObject({ found: true, name: 'Off Three' });
 
@@ -360,7 +362,8 @@ describe('teams and one response per phone', () => {
     expect(by('T2')).toMatchObject({ group: 1, team: 'Alpha Crew', response: 'Attending' });
     expect(by('T2').collected_at).not.toBeNull();
     expect(by('T3').collected_at).toBeNull();
-    expect(by('T1')).toMatchObject({ group: 2, team: 'zeta squad', response: 'No response' });
+    expect(by('T1')).toMatchObject({ team: 'zeta squad', response: 'No response' });
+    expect(by('T1').group!).toBeGreaterThan(by('T2').group!); // alphabetical: Alpha Crew before zeta squad
     expect(rows.some((r) => r.team === 'Unassigned')).toBe(true);
     const groups = rows.map((r) => r.group ?? 1e9);
     expect([...groups].sort((a, b) => a - b)).toEqual(groups); // ordered by group, Unassigned last

@@ -28,7 +28,7 @@ export function OfflineUpload() {
         <Button variant="secondary" onClick={() => download('/api/admin/offline/template').catch((e) => setErr(e.message))}>Download Excel template</Button>
         <input ref={ref} type="file" accept=".xlsx,.csv" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) upload(f); }} />
       </div>
-      <p className="text-xs text-slate-500">Columns: <strong>Employee ID</strong>, <strong>Employee Name</strong>, <strong>Veg/Non-veg</strong>, <strong>Goodie</strong>. The template has drop-downs with your current goodie names.</p>
+      <p className="text-xs text-slate-500">Columns: <strong>Employee ID</strong>, <strong>Employee Name</strong>, <strong>Team Name</strong>, <strong>Veg/Non-veg</strong>, <strong>Goodie</strong>. The template has drop-downs with your current goodie names.</p>
       {err && <Alert>{err}</Alert>}
       {res && (
         <>
