@@ -68,6 +68,7 @@ export const surveySubmitSchema = z.object({
   name: z.string().trim().max(100).default(''), // optional when the employee ID is in the list (the list's name is used)
   goodie_id: z.string().uuid(),
   meal: z.enum(['veg', 'nonveg'], { message: 'Choose Veg or Non-veg' }),
+  attending: z.boolean({ message: 'Tell us whether you will attend on 27 November' }),
 });
 
 export const photoSchema = z.object({

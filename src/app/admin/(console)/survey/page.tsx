@@ -9,7 +9,7 @@ import { GoodiesTabs } from '@/components/admin/GoodiesTabs';
 interface Choice { employee_id: string; name: string; goodie: string; chosen_at: string; registered: boolean; registered_name: string | null; email: string | null; team_number: number | null; team_name: string | null }
 interface Pending { employee_id: string; name: string; email: string | null; department: string | null; team_number: number | null; team_name: string | null }
 interface G { id: string; name: string; stock: number; reserved: number; is_active: boolean }
-interface Report { choices: Choice[]; pending: Pending[]; goodies: G[]; meals?: { veg: number; nonveg: number; by_employee: Record<string, string> } }
+interface Report { choices: Choice[]; pending: Pending[]; goodies: G[]; meals?: { veg: number; nonveg: number; by_employee: Record<string, string> }; attendance?: { yes: number; no: number; by_employee: Record<string, boolean> } }
 
 const when = (iso: string) => new Date(iso).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
 
@@ -70,9 +70,10 @@ export default function SurveyPage() {
       </Card>
 
       {data && (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
           <Card><p className="text-sm text-slate-500">Responses</p><p className="text-3xl font-black">{data.choices.length}</p></Card>
           <Card><p className="text-sm text-slate-500">Registered, not chosen yet</p><p className="text-3xl font-black">{data.pending.length}</p></Card>
+          <Card><p className="text-sm text-slate-500">Attending 27 Nov</p><p className="text-2xl font-black"><span className="text-brand-700">{data.attendance?.yes ?? 0} Yes</span> · <span className="text-slate-500">{data.attendance?.no ?? 0} No</span></p></Card>
           <Card><p className="text-sm text-slate-500">Meals</p><p className="text-2xl font-black"><span className="text-emerald-700">{data.meals?.veg ?? 0} Veg</span> · <span className="text-rose-700">{data.meals?.nonveg ?? 0} Non-veg</span></p></Card>
           <Card><p className="text-sm text-slate-500">Goodies left</p><p className="text-3xl font-black">{Math.max(stock - taken, 0)} <span className="text-base font-medium text-slate-400">/ {stock}</span></p></Card>
         </div>
@@ -107,7 +108,7 @@ export default function SurveyPage() {
         <div className="overflow-x-auto">
           {tab === 'choices' ? (
             <table className="w-full text-left text-sm">
-              <thead className="text-xs uppercase text-slate-500"><tr><th className="py-2 pr-3">Employee ID</th><th className="pr-3">Name</th><th className="pr-3">Goodie</th><th className="pr-3">Meal</th><th className="pr-3">List</th><th className="pr-3">When</th><th /></tr></thead>
+              <thead className="text-xs uppercase text-slate-500"><tr><th className="py-2 pr-3">Employee ID</th><th className="pr-3">Name</th><th className="pr-3">Goodie</th><th className="pr-3">Meal</th><th className="pr-3">27 Nov</th><th className="pr-3">List</th><th className="pr-3">When</th><th /></tr></thead>
               <tbody className="divide-y divide-slate-100">
                 {choices.map((c) => (
                   <tr key={c.employee_id}>
@@ -115,12 +116,13 @@ export default function SurveyPage() {
                     <td className="pr-3">{c.name}{c.registered_name && c.registered_name.toLowerCase() !== c.name.toLowerCase() && <span className="block text-xs text-slate-400">registered as {c.registered_name}</span>}</td>
                     <td className="pr-3 font-medium">{c.goodie}</td>
                     <td className="pr-3">{({ veg: 'Veg', nonveg: 'Non-veg' } as Record<string, string>)[data?.meals?.by_employee[c.employee_id] ?? ''] ?? '—'}</td>
+                    <td className="pr-3">{data?.attendance?.by_employee[c.employee_id] === undefined ? '—' : data.attendance.by_employee[c.employee_id] ? 'Yes' : 'No'}</td>
                     <td className="pr-3">{c.registered ? (c.team_number ? teamLabel(c.team_number) : '✓ in list') : <Badge tone="amber">Not in list</Badge>}</td>
                     <td className="whitespace-nowrap pr-3 text-slate-500">{when(c.chosen_at)}</td>
                     <td className="text-right">{admin.atLeast('admin') && <button className="text-xs font-semibold text-rose-700 hover:underline" onClick={() => reset(c)}>Clear</button>}</td>
                   </tr>
                 ))}
-                {choices.length === 0 && <tr><td colSpan={7} className="py-8 text-center text-slate-400">{data ? 'No responses yet.' : 'Loading…'}</td></tr>}
+                {choices.length === 0 && <tr><td colSpan={8} className="py-8 text-center text-slate-400">{data ? 'No responses yet.' : 'Loading…'}</td></tr>}
               </tbody>
             </table>
           ) : (

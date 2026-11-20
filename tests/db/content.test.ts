@@ -68,7 +68,7 @@ describe('goodies survey (no PIN)', () => {
     const cap = await mk('Cap', 3);
     const mug = await mk('Mug', 50);
     const submit = (emp: string, goodie: string, name = 'Some One') =>
-      t.db.rpc<{ goodie: string; employee_id: string }>('survey_submit', { p_event: t.eventId, p_employee_id: emp, p_name: name, p_goodie: goodie, p_meal: 'veg' });
+      t.db.rpc<{ goodie: string; employee_id: string }>('survey_submit', { p_event: t.eventId, p_employee_id: emp, p_name: name, p_goodie: goodie, p_meal: 'veg', p_attending: true });
 
     await t.db.rpc('set_event_flags', { p_event: t.eventId, p_flags: { goodies_open: false }, p_actor: t.actorId });
     await expect(submit('S0001', cap)).rejects.toSatisfy(dx('ARENA_CLOSED'));
@@ -136,9 +136,9 @@ describe('goodies participant list', () => {
       p_is_active: true, p_sort_order: null, p_actor: t.actorId,
     })).id;
     await t.db.rpc('set_event_flags', { p_event: t.eventId, p_flags: { goodies_open: true }, p_actor: t.actorId });
-    await expect(t.db.rpc('survey_submit', { p_event: t.eventId, p_employee_id: 'NOPE1', p_name: 'Some One', p_goodie: g, p_meal: 'veg' })).rejects.toSatisfy(dx('NOT_FOUND'));
+    await expect(t.db.rpc('survey_submit', { p_event: t.eventId, p_employee_id: 'NOPE1', p_name: 'Some One', p_goodie: g, p_meal: 'veg', p_attending: true })).rejects.toSatisfy(dx('NOT_FOUND'));
     // typed name is ignored — the list's name wins
-    const ok = await t.db.rpc<{ name: string }>('survey_submit', { p_event: t.eventId, p_employee_id: 'L100', p_name: 'x', p_goodie: g, p_meal: 'veg' });
+    const ok = await t.db.rpc<{ name: string }>('survey_submit', { p_event: t.eventId, p_employee_id: 'L100', p_name: 'x', p_goodie: g, p_meal: 'veg', p_attending: true });
     expect(ok.name).toBe('Asha Rao');
     const feed = await t.db.rpc<{ recent: { who: string; goodie: string }[]; list_required: boolean }>('survey_feed', { p_event: t.eventId });
     expect(feed.recent[0]).toMatchObject({ who: 'Asha', goodie: 'Sticker pack' });
@@ -169,8 +169,8 @@ describe('auto-picks', () => {
     const gold = await mk('Gold pen', 1);
     const tee = await mk('Tee', 5);
     await t.db.rpc('set_event_flags', { p_event: t.eventId, p_flags: { goodies_open: false }, p_actor: t.actorId });
-    const a = await t.db.rpc<{ token: string }>('admin_autopick_save', { p_event: t.eventId, p_employee_id: 'ap1', p_name: 'Kiran Das', p_prefs: [gold, tee], p_meal: 'nonveg', p_actor: t.actorId });
-    await t.db.rpc('admin_autopick_save', { p_event: t.eventId, p_employee_id: 'AP2', p_name: 'Nila Sen', p_prefs: [gold, tee], p_meal: 'nonveg', p_actor: t.actorId });
+    const a = await t.db.rpc<{ token: string }>('admin_autopick_save', { p_event: t.eventId, p_employee_id: 'ap1', p_name: 'Kiran Das', p_prefs: [gold, tee], p_meal: 'nonveg', p_attending: true, p_actor: t.actorId });
+    await t.db.rpc('admin_autopick_save', { p_event: t.eventId, p_employee_id: 'AP2', p_name: 'Nila Sen', p_prefs: [gold, tee], p_meal: 'nonveg', p_attending: true, p_actor: t.actorId });
 
     expect(await t.db.rpc('autopick_run_pending', { p_event: t.eventId })).toBe(0); // closed: nothing happens
     await expect(t.db.rpc('autopick_claim', { p_token: a.token })).rejects.toSatisfy(dx('ARENA_CLOSED'));
@@ -179,7 +179,7 @@ describe('auto-picks', () => {
     // first outside pick (someone racing for the gold pen) — listed people are assigned first
     await t.db.rpc('admin_roster_import', { p_event: t.eventId, p_rows: [{ employee_id: 'OUT1', name: 'Out Sider' }], p_replace: false, p_actor: t.actorId });
     expect(await t.db.rpc('autopick_run_pending', { p_event: t.eventId })).toBe(2); // what the submit/feed/page routes do first
-    await expect(t.db.rpc('survey_submit', { p_event: t.eventId, p_employee_id: 'OUT1', p_name: '', p_goodie: gold, p_meal: 'veg' })).rejects.toSatisfy(dx('OUT_OF_STOCK'));
+    await expect(t.db.rpc('survey_submit', { p_event: t.eventId, p_employee_id: 'OUT1', p_name: '', p_goodie: gold, p_meal: 'veg', p_attending: true })).rejects.toSatisfy(dx('OUT_OF_STOCK'));
     const list = await t.db.rpc<{ employee_id: string; goodie: string | null }[]>('admin_autopick_list', { p_event: t.eventId });
     expect(list.find((x) => x.employee_id === 'AP1')?.goodie).toBe('Gold pen');
     expect(list.find((x) => x.employee_id === 'AP2')?.goodie).toBe('Tee'); // fell back to 2nd preference
@@ -199,11 +199,24 @@ describe('meal preference', () => {
     })).id;
     await t.db.rpc('set_event_flags', { p_event: t.eventId, p_flags: { goodies_open: true }, p_actor: t.actorId });
     await t.db.rpc('admin_roster_import', { p_event: t.eventId, p_rows: [{ employee_id: 'MEAL1', name: 'Meal One' }, { employee_id: 'MEAL2', name: 'Meal Two' }], p_replace: false, p_actor: t.actorId });
-    await expect(t.db.rpc('survey_submit', { p_event: t.eventId, p_employee_id: 'MEAL1', p_name: '', p_goodie: g, p_meal: 'fish' })).rejects.toSatisfy(dx('INVALID_INPUT'));
-    expect((await t.db.rpc<{ meal: string }>('survey_submit', { p_event: t.eventId, p_employee_id: 'MEAL1', p_name: '', p_goodie: g, p_meal: 'veg' })).meal).toBe('veg');
-    await t.db.rpc('survey_submit', { p_event: t.eventId, p_employee_id: 'MEAL2', p_name: '', p_goodie: g, p_meal: 'nonveg' });
-    await expect(t.db.rpc('survey_submit', { p_event: t.eventId, p_employee_id: 'MEAL2', p_name: '', p_goodie: g, p_meal: 'veg' })).rejects.toSatisfy(dx('ALREADY_RESERVED'));
+    await expect(t.db.rpc('survey_submit', { p_event: t.eventId, p_employee_id: 'MEAL1', p_name: '', p_goodie: g, p_meal: 'fish', p_attending: true })).rejects.toSatisfy(dx('INVALID_INPUT'));
+    expect((await t.db.rpc<{ meal: string }>('survey_submit', { p_event: t.eventId, p_employee_id: 'MEAL1', p_name: '', p_goodie: g, p_meal: 'veg', p_attending: true })).meal).toBe('veg');
+    await t.db.rpc('survey_submit', { p_event: t.eventId, p_employee_id: 'MEAL2', p_name: '', p_goodie: g, p_meal: 'nonveg', p_attending: false });
+    await expect(t.db.rpc('survey_submit', { p_event: t.eventId, p_employee_id: 'MEAL2', p_name: '', p_goodie: g, p_meal: 'veg', p_attending: true })).rejects.toSatisfy(dx('ALREADY_RESERVED'));
     const m = await t.db.rpc<{ by_employee: Record<string, string> }>('admin_meal_summary', { p_event: t.eventId });
     expect(m.by_employee).toMatchObject({ MEAL1: 'veg', MEAL2: 'nonveg', AP1: 'nonveg', AP2: 'nonveg' });
+  });
+});
+
+describe('attendance on 27 Nov', () => {
+  it('is required and counted', async () => {
+    const g = (await t.db.rpc<{ id: string }>('admin_upsert_goodie', {
+      p_event: t.eventId, p_id: null, p_name: 'Attend cap', p_description: null, p_stock: 5, p_image_url: null, p_is_active: true, p_sort_order: null, p_actor: t.actorId,
+    })).id;
+    await t.db.rpc('admin_roster_import', { p_event: t.eventId, p_rows: [{ employee_id: 'ATT1', name: 'Att One' }], p_replace: false, p_actor: t.actorId });
+    await expect(t.db.rpc('survey_submit', { p_event: t.eventId, p_employee_id: 'ATT1', p_name: '', p_goodie: g, p_meal: 'veg', p_attending: null })).rejects.toSatisfy(dx('INVALID_INPUT'));
+    expect((await t.db.rpc<{ attending: boolean }>('survey_submit', { p_event: t.eventId, p_employee_id: 'ATT1', p_name: '', p_goodie: g, p_meal: 'veg', p_attending: false })).attending).toBe(false);
+    const a = await t.db.rpc<{ by_employee: Record<string, boolean> }>('admin_attendance_summary', { p_event: t.eventId });
+    expect(a.by_employee).toMatchObject({ ATT1: false, AP1: true });
   });
 });

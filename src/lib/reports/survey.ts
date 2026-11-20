@@ -26,17 +26,20 @@ const ist = (iso: string) =>
 const MEAL: Record<string, string> = { veg: 'Veg', nonveg: 'Non-veg' };
 
 export async function buildSurveyReport(eventName: string, d: SurveyReport, auto: Set<string> = new Set(),
-  meals: { veg: number; nonveg: number; by_employee: Record<string, string> } = { veg: 0, nonveg: 0, by_employee: {} }): Promise<Buffer> {
+  meals: { veg: number; nonveg: number; by_employee: Record<string, string> } = { veg: 0, nonveg: 0, by_employee: {} },
+  att: { yes: number; no: number; by_employee: Record<string, boolean> } = { yes: 0, no: 0, by_employee: {} }): Promise<Buffer> {
   const wb = new ExcelJS.Workbook();
   wb.creator = 'Gen AI Designathon';
   wb.created = new Date();
   sheet(wb, 'Goodie choices',
-    [['Employee ID', 16], ['Name', 28], ['Goodie', 24], ['Meal', 10], ['Chosen at (IST)', 20], ['In participant list?', 14], ['Email', 30], ['Department', 20], ['Team', 12], ['How', 16]],
-    [...d.choices].reverse().map((c) => [c.employee_id, c.name, c.goodie, MEAL[meals.by_employee[c.employee_id]] ?? '', ist(c.chosen_at), c.registered ? 'Yes' : 'Not found',
+    [['Employee ID', 16], ['Name', 28], ['Goodie', 24], ['Meal', 10], ['Attending 27 Nov', 16], ['Chosen at (IST)', 20], ['In participant list?', 14], ['Email', 30], ['Department', 20], ['Team', 12], ['How', 16]],
+    [...d.choices].reverse().map((c) => [c.employee_id, c.name, c.goodie, MEAL[meals.by_employee[c.employee_id]] ?? '',
+      att.by_employee[c.employee_id] === undefined ? '' : att.by_employee[c.employee_id] ? 'Yes' : 'No', ist(c.chosen_at), c.registered ? 'Yes' : 'Not found',
       c.email ?? '', c.department ?? '', c.team_number ? teamLabel(c.team_number) : '', auto.has(c.employee_id) ? 'Auto-assigned' : 'Chose in survey']), [1]);
   sheet(wb, 'Totals per goodie', [['Goodie', 28], ['Quantity', 12], ['Chosen', 12], ['Left', 12], ['Visible', 10]],
     d.goodies.map((g) => [g.name, g.stock, g.reserved, Math.max(g.stock - g.reserved, 0), g.is_active ? 'Yes' : 'Hidden']));
   sheet(wb, 'Meal counts', [['Meal', 16], ['People', 12]], [['Veg', meals.veg], ['Non-veg', meals.nonveg], ['Total', meals.veg + meals.nonveg]]);
+  sheet(wb, 'Attendance 27 Nov', [['Attending?', 16], ['People', 12]], [['Yes', att.yes], ['No', att.no], ['Total', att.yes + att.no]]);
   sheet(wb, 'Not chosen yet', [['Employee ID', 16], ['Name', 28], ['Email', 30], ['Department', 20], ['Team', 12]],
     d.pending.map((p) => [p.employee_id, p.name, p.email ?? '', p.department ?? '', p.team_number ? teamLabel(p.team_number) : '']), [1]);
   const about = wb.addWorksheet('About');

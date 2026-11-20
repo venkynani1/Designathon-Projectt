@@ -15,11 +15,12 @@ const schema = z.object({
   name: z.string().trim().max(100).default(''),
   prefs: z.array(z.string().uuid()).min(1).max(10),
   meal: z.enum(['veg', 'nonveg'], { message: 'Choose Veg or Non-veg' }),
+  attending: z.boolean().default(true),
 });
 
 export const POST = route(async (req) => {
   const admin = await requirePicker();
   const a = await body(req, schema);
   const ev = await currentEvent(db());
-  return json(await db().rpc('admin_autopick_save', { p_event: ev.id, p_employee_id: a.employee_id, p_name: a.name, p_prefs: a.prefs, p_meal: a.meal, p_actor: admin.user_id }));
+  return json(await db().rpc('admin_autopick_save', { p_event: ev.id, p_employee_id: a.employee_id, p_name: a.name, p_prefs: a.prefs, p_meal: a.meal, p_attending: a.attending, p_actor: admin.user_id }));
 });
