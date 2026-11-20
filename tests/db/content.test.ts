@@ -335,3 +335,34 @@ describe('offline registrations and said-No-but-came', () => {
     expect(att.declined.find((d) => d.employee_id === '7003')?.came_at).toBeTruthy();
   });
 });
+
+describe('teams and one response per phone', () => {
+  it('numbers teams alphabetically, reports present = collected, and blocks a second response from the same phone', async () => {
+    const g = (await t.db.rpc<{ id: string }>('admin_upsert_goodie', {
+      p_event: t.eventId, p_id: null, p_name: 'Team tee', p_description: null, p_stock: 10, p_image_url: null, p_is_active: true, p_sort_order: null, p_actor: t.actorId,
+    })).id;
+    const imp = await t.db.rpc<{ imported: number; skipped: unknown[] }>('admin_team_import', { p_event: t.eventId, p_actor: t.actorId, p_rows: [
+      { employee_id: 'T1', name: 'Tara One', team: 'zeta squad' }, { employee_id: 'T2', name: 'Tom Two', team: 'Alpha Crew' },
+      { employee_id: 'T3', name: 'Tia Three', team: 'Alpha Crew' }, { employee_id: 'T4', name: '', team: 'Alpha Crew' },
+    ] });
+    expect(imp.imported).toBe(3);
+    await t.db.rpc('set_event_flags', { p_event: t.eventId, p_flags: { goodies_open: true }, p_actor: t.actorId });
+    await t.db.rpc('survey_submit', { p_event: t.eventId, p_employee_id: 'T2', p_name: '', p_goodie: g, p_meal: 'veg', p_attending: true, p_device: 'phoneA' });
+    await expect(t.db.rpc('survey_submit', { p_event: t.eventId, p_employee_id: 'T3', p_name: '', p_goodie: g, p_meal: 'veg', p_attending: true, p_device: 'phoneA' }))
+      .rejects.toThrow(/already been used/);
+    await expect(t.db.rpc('survey_submit', { p_event: t.eventId, p_employee_id: 'T3', p_name: '', p_goodie: null, p_meal: null, p_attending: false, p_device: 'phoneA' }))
+      .rejects.toThrow(/already been used/);
+    await t.db.rpc('survey_submit', { p_event: t.eventId, p_employee_id: 'T3', p_name: '', p_goodie: g, p_meal: 'nonveg', p_attending: true, p_device: 'phoneB' });
+    await t.db.rpc('collect_checkin', { p_event: t.eventId, p_employee_id: 'T2' });
+    await t.db.rpc('desk_mark', { p_event: t.eventId, p_employee_id: 'T2', p_action: 'collect', p_by: 'Priya' });
+    const rows = await t.db.rpc<{ group: number | null; team: string; employee_id: string; collected_at: string | null; response: string }[]>('admin_team_rows', { p_event: t.eventId });
+    const by = (e: string) => rows.find((r) => r.employee_id === e)!;
+    expect(by('T2')).toMatchObject({ group: 1, team: 'Alpha Crew', response: 'Attending' });
+    expect(by('T2').collected_at).not.toBeNull();
+    expect(by('T3').collected_at).toBeNull();
+    expect(by('T1')).toMatchObject({ group: 2, team: 'zeta squad', response: 'No response' });
+    expect(rows.some((r) => r.team === 'Unassigned')).toBe(true);
+    const groups = rows.map((r) => r.group ?? 1e9);
+    expect([...groups].sort((a, b) => a - b)).toEqual(groups); // ordered by group, Unassigned last
+  });
+});

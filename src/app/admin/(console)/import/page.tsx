@@ -5,6 +5,7 @@ import { Alert, Badge, Button, Card, Field, teamLabel } from '@/components/ui';
 import { useAdmin } from '@/components/admin/AdminContext';
 import { RosterUpload } from '@/components/admin/RosterUpload';
 import { OfflineUpload } from '@/components/admin/OfflineUpload';
+import { TeamsUpload } from '@/components/admin/TeamsUpload';
 
 interface Upload { id: string; headers: string[]; sample: Record<string, string>[]; row_count: number; fields: string[]; suggested_mapping: Record<string, string> }
 interface Plan {
@@ -77,6 +78,15 @@ export default function ImportPage() {
             Leave Goodie empty to just add them to the list so they can choose with the goodies QR.</p>
         </div>
         {admin.atLeast('admin') ? <OfflineUpload /> : <Alert tone="amber">Only admins can upload offline registrations.</Alert>}
+      </Card>
+
+      <Card className="space-y-3">
+        <div>
+          <h2 className="text-lg font-bold">Teams (for the team-wise reports)</h2>
+          <p className="text-sm text-slate-600">Upload <strong>Employee ID, Employee Name, Team Name</strong>. Teams are numbered Group 1, 2, 3… alphabetically by team name in the reports.
+            These people are also added to the participant list.</p>
+        </div>
+        {admin.atLeast('admin') ? <TeamsUpload /> : <Alert tone="amber">Only admins can upload teams.</Alert>}
       </Card>
 
       <details className="rounded-2xl bg-white p-4 ring-1 ring-slate-200">

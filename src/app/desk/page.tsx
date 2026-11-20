@@ -43,7 +43,7 @@ function SignIn({ event, onDone }: { event: string; onDone: () => void }) {
 }
 
 export default function DeskPage() {
-  const [me, setMe] = useState<{ signed_in: boolean; name: string | null; event: string } | null>(null);
+  const [me, setMe] = useState<{ signed_in: boolean; name: string | null; finished?: boolean; event: string } | null>(null);
   const [q, setQ] = useState<Queue | null>(null);
   const [svg, setSvg] = useState('');
   const [url, setUrl] = useState('');
@@ -54,7 +54,7 @@ export default function DeskPage() {
   const [found, setFound] = useState<Lookup | null>(null);
   const inFlight = useRef(false);
 
-  const loadMe = useCallback(() => call<{ signed_in: boolean; name: string | null; event: string }>('/api/desk/unlock').then(setMe).catch(() => setMe({ signed_in: false, name: null, event: 'Gen AI Designathon' })), []);
+  const loadMe = useCallback(() => call<{ signed_in: boolean; name: string | null; finished?: boolean; event: string }>('/api/desk/unlock').then(setMe).catch(() => setMe({ signed_in: false, name: null, event: 'Gen AI Designathon' })), []);
   useEffect(() => { loadMe(); }, [loadMe]);
 
   useEffect(() => {
@@ -71,7 +71,7 @@ export default function DeskPage() {
     finally { inFlight.current = false; }
   }, [loadMe]);
   useEffect(() => {
-    if (!me?.signed_in) return;
+    if (!me?.signed_in || me.finished) return;
     load();
     const t = setInterval(() => { if (document.visibilityState === 'visible') load(); }, 1500);
     return () => clearInterval(t);
@@ -92,6 +92,18 @@ export default function DeskPage() {
 
   if (!me) return <p className="p-10 text-center text-slate-400">Loading…</p>;
   if (!me.signed_in) return <SignIn event={me.event} onDone={loadMe} />;
+  if (me.finished) return (
+    <main className="flex min-h-screen items-center justify-center bg-slate-100 p-4">
+      <div className="w-full max-w-md rounded-3xl bg-white p-8 text-center shadow-lg ring-1 ring-slate-200">
+        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 text-3xl text-emerald-700">✓</div>
+        <h1 className="mt-4 text-2xl font-black">Thanks, {me.name}!</h1>
+        <p className="mt-1 text-slate-600">You’ve finished distributing. Other desks can carry on.</p>
+        <a href="/api/desk/attendance" className="mt-6 block rounded-xl bg-brand-600 py-3 font-bold text-white">Download attendance (Excel)</a>
+        <p className="mt-2 text-xs text-slate-500">Team-wise present / absent and leftover goodies, as of now.</p>
+        <button className="mt-6 text-xs font-semibold text-slate-500 underline" onClick={async () => { await call('/api/desk/logout', {}); loadMe(); }}>Sign in again to keep distributing</button>
+      </div>
+    </main>
+  );
 
   return (
     <main className="min-h-screen bg-slate-100">
@@ -102,6 +114,10 @@ export default function DeskPage() {
         </div>
         {q && <p className="rounded-full bg-emerald-50 px-3 py-1 text-sm font-bold text-emerald-800 ring-1 ring-emerald-200">{q.collected} / {q.total} collected</p>}
         <span className="text-sm text-slate-500">Desk: <strong className="text-slate-800">{me.name}</strong></span>
+        <button className="rounded-lg bg-slate-900 px-3 py-1.5 text-sm font-bold text-white" onClick={async () => {
+          if (!window.confirm('Finish distributing? You can then download the attendance file. Other desks carry on.')) return;
+          try { await call('/api/desk/finish', {}); loadMe(); } catch (e) { say('err', e instanceof Error ? e.message : 'Failed'); }
+        }}>Finish</button>
         <button className="text-xs font-semibold text-slate-500 underline" onClick={async () => { await call('/api/desk/logout', {}); loadMe(); }}>Sign out</button>
       </header>
 

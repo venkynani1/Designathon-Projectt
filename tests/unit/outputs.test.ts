@@ -69,3 +69,21 @@ describe('authorization', () => {
     expect((fromDbError({ message: 'boom' }) as DxError).status).toBe(500);
   });
 });
+
+import { buildAttendanceReport, buildTeamWiseReport } from '@/lib/reports/teams';
+import ExcelJS2 from 'exceljs';
+describe('team reports', () => {
+  const rows = [
+    { group: 1, team: 'Alpha', employee_id: '1', name: 'A', response: 'Attending' as const, goodie: 'Tee', meal: 'veg' as const, collected_at: '2026-11-27T05:00:00Z', collected_by: 'P', came_at: null },
+    { group: 1, team: 'Alpha', employee_id: '2', name: 'B', response: 'No response' as const, goodie: null, meal: null, collected_at: null, collected_by: null, came_at: null },
+  ];
+  it('builds team-wise and attendance workbooks', async () => {
+    const wb = new ExcelJS2.Workbook();
+    await wb.xlsx.load((await buildTeamWiseReport('E', rows)) as unknown as ArrayBuffer);
+    expect(wb.worksheets.map((w) => w.name)).toEqual(['Summary', 'Team-wise']);
+    const at = new ExcelJS2.Workbook();
+    await at.xlsx.load((await buildAttendanceReport('E', rows, [{ name: 'Tee', stock: 5, chosen: 1, collected: 1 }])) as unknown as ArrayBuffer);
+    const tot = at.getWorksheet('Team attendance')!;
+    expect(tot.getRow(2).values).toEqual([undefined, 'Group 1', 'Alpha', 2, 1, 1, 0.5]);
+  });
+});

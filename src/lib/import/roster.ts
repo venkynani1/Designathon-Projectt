@@ -58,3 +58,18 @@ export function offlineFromSheet(sheet: ParsedSheet): OfflineRow[] {
   }
   return sheet.rows.map((r) => ({ employee_id: r[c.id!] ?? '', name: r[c.name!] ?? '', meal: r[meal] ?? '', goodie: r[goodie] ?? '' }));
 }
+
+export interface TeamImportRow { employee_id: string; name: string; team: string }
+
+/** Team file: Employee ID, Employee Name, Team Name. */
+export function teamsFromSheet(sheet: ParsedSheet): TeamImportRow[] {
+  const norm = (h: string) => h.toLowerCase().replace(/[^a-z]/g, '');
+  const id = sheet.headers.find((h) => ['empid', 'employeeid', 'employeeno', 'empno', 'empcode', 'employeecode', 'id', 'psno'].includes(norm(h)))
+    ?? sheet.headers.find((h) => norm(h).includes('emp') && /id|no|code/.test(norm(h)));
+  const team = sheet.headers.find((h) => norm(h).includes('team') || norm(h).includes('group'));
+  const name = sheet.headers.find((h) => h !== team && norm(h).includes('name'));
+  if (!id || !name || !team) {
+    throw new DxError('INVALID_INPUT', `The first row needs the headings "Employee ID", "Employee Name" and "Team Name" (found: ${sheet.headers.join(', ')})`);
+  }
+  return sheet.rows.map((r) => ({ employee_id: r[id] ?? '', name: r[name] ?? '', team: r[team] ?? '' }));
+}

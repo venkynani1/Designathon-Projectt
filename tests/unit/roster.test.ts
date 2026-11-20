@@ -22,3 +22,11 @@ describe('offline registrations sheet', () => {
     expect(rows[0]).toEqual({ employee_id: '1001', name: 'A B', meal: 'Non Veg', goodie: 'Hoodie' });
   });
 });
+
+import { teamsFromSheet } from '@/lib/import/roster';
+describe('team file', () => {
+  it('maps Employee ID, Employee Name, Team Name', () => {
+    expect(teamsFromSheet({ headers: ['Employee ID', 'Employee Name', 'Team Name'], rows: [{ 'Employee ID': '1001', 'Employee Name': 'A B', 'Team Name': 'Zeta' }] }))
+      .toEqual([{ employee_id: '1001', name: 'A B', team: 'Zeta' }]);
+  });
+});

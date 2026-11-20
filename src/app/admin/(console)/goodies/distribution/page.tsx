@@ -1,6 +1,6 @@
 'use client';
 import { useCallback, useEffect, useState } from 'react';
-import { api } from '@/components/api';
+import { api, download } from '@/components/api';
 import { Alert, Button, Card } from '@/components/ui';
 import { useAdmin } from '@/components/admin/AdminContext';
 import { GoodiesTabs } from '@/components/admin/GoodiesTabs';
@@ -71,6 +71,10 @@ export default function DistributionPage() {
           </div>
         </Card>
       )}
+      <Card className="flex flex-wrap items-center gap-3">
+        <div className="mr-auto"><h2 className="font-bold">Attendance</h2><p className="text-sm text-slate-600">Team-wise present / absent (present = collected their goodie) and leftover goodies.</p></div>
+        <Button onClick={() => download('/api/admin/attendance').catch((e) => setErr(e.message))}>Download attendance</Button>
+      </Card>
       <p className="text-sm text-slate-500">Download the Excel report from <a href="/admin/survey" className="font-semibold text-brand-700 hover:underline">Link, QR &amp; report</a> — it includes Collected at and Collected by.</p>
     </div>
   );

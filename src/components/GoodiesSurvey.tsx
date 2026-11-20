@@ -138,9 +138,7 @@ export function GoodiesSurvey({ initial = null }: { initial?: Feed | null }) {
             {done.meal && <p className="mt-1 text-slate-600">Meal: <strong className="text-slate-900">{MEAL_LABEL[done.meal]}</strong></p>}
             {done.goodie && done.attending != null && <p className="mt-1 text-slate-600">Attending on 27 Nov: <strong className="text-slate-900">{done.attending ? 'Yes' : 'No'}</strong></p>}
             <p className="mt-1 text-sm text-slate-500">Employee ID {done.employee_id}</p>
-            <button className="mt-6 text-xs text-slate-400 underline" onClick={() => { try { localStorage.removeItem(DONE_KEY); } catch { /* */ } setDone(null); setEmp(''); setPick(null); setTypedName(''); setMeal(null); setAttending(null); }}>
-              Choosing for someone else on this phone?
-            </button>
+            <p className="mt-6 text-xs text-slate-400">One response per person and per phone.</p>
           </section>
         ) : (
           <>

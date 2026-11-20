@@ -11,7 +11,7 @@ export const runtime = 'nodejs';
 export const GET = route(async () => {
   const ev = await currentEvent(db());
   const d = await currentDesk(db(), ev.id);
-  return json({ signed_in: !!d, name: d?.name ?? null, event: ev.name });
+  return json({ signed_in: !!d, name: d?.name ?? null, finished: !!d?.finished, event: ev.name });
 });
 
 /** Distributor signs in with their name + the shared desk PIN. */

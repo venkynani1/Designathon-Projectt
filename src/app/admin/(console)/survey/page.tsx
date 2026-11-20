@@ -49,6 +49,7 @@ export default function SurveyPage() {
         <h1 className="mr-auto text-2xl font-black">Goodies</h1>
         <Button variant="secondary" onClick={() => download('/api/admin/survey/reminders').catch((e) => setErr(e.message))}>Download reminder list</Button>
         <Button variant="secondary" onClick={() => download('/api/admin/survey/export').catch((e) => setErr(e.message))}>Download Excel report</Button>
+        <Button onClick={() => download('/api/admin/teams/report').catch((e) => setErr(e.message))}>Generate team report</Button>
       </div>
       <GoodiesTabs />
       <ArenaBar arena="goodies" />
