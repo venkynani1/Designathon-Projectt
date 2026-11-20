@@ -13,8 +13,9 @@ export const GET = route(async () => {
   const auto = await db().rpc<{ employee_id: string; goodie: string | null }[]>('admin_autopick_list', { p_event: ev.id });
   const autoIds = new Set(auto.filter((a) => a.goodie).map((a) => a.employee_id));
   const meals = await db().rpc<{ veg: number; nonveg: number; by_employee: Record<string, string> }>('admin_meal_summary', { p_event: ev.id });
+  const dist = await db().rpc<{ by_employee: Record<string, { at: string; by: string | null }> }>('admin_distribution_summary', { p_event: ev.id });
   const att = await db().rpc<{ yes: number; no: number; by_employee: Record<string, boolean>; declined: { employee_id: string; name: string; at: string }[] }>('admin_attendance_summary', { p_event: ev.id });
   const stamp = new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-');
-  return fileResponse(await buildSurveyReport(ev.name, data, autoIds, meals, att), `${ev.code}-goodies-${stamp}.xlsx`,
+  return fileResponse(await buildSurveyReport(ev.name, data, autoIds, meals, att, dist.by_employee), `${ev.code}-goodies-${stamp}.xlsx`,
     'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
 });

@@ -249,3 +249,49 @@ describe('attendance first', () => {
     expect((await t.db.rpc<{ declined: boolean }>('survey_lookup', { p_event: t.eventId, p_employee_id: 'NO1' })).declined).toBe(false);
   });
 });
+
+describe('goodie distribution desk', () => {
+  it('check-in queues people; only the first Collected tap counts; undo and skip work', async () => {
+    const g = (await t.db.rpc<{ id: string }>('admin_upsert_goodie', {
+      p_event: t.eventId, p_id: null, p_name: 'Desk mug', p_description: null, p_stock: 5, p_image_url: null, p_is_active: true, p_sort_order: null, p_actor: t.actorId,
+    })).id;
+    await t.db.rpc('set_event_flags', { p_event: t.eventId, p_flags: { goodies_open: true }, p_actor: t.actorId });
+    await t.db.rpc('admin_roster_import', { p_event: t.eventId, p_rows: [{ employee_id: 'D1', name: 'Dev One' }, { employee_id: 'D2', name: 'Dia Two' }, { employee_id: 'D3', name: 'Dan Three' }], p_replace: false, p_actor: t.actorId });
+    for (const e of ['D1', 'D2']) await t.db.rpc('survey_submit', { p_event: t.eventId, p_employee_id: e, p_name: '', p_goodie: g, p_meal: 'veg', p_attending: true });
+    await t.db.rpc('survey_submit', { p_event: t.eventId, p_employee_id: 'D3', p_name: '', p_goodie: null, p_meal: null, p_attending: false });
+
+    const pin = await t.db.rpc<{ pin: string; version: number }>('admin_desk_get', { p_event: t.eventId });
+    expect(pin.pin).toMatch(/^\d{6}$/);
+    expect(await t.db.rpc('desk_check_pin', { p_event: t.eventId, p_pin: pin.pin })).toBe(pin.version);
+    expect(await t.db.rpc('desk_check_pin', { p_event: t.eventId, p_pin: '000000x' })).toBeNull();
+
+    const v = await t.db.rpc<{ status: string; name: string; goodie: string }>('collect_checkin', { p_event: t.eventId, p_employee_id: 'd1' });
+    expect(v).toMatchObject({ status: 'ready', name: 'Dev One', goodie: 'Desk mug' });
+    expect((await t.db.rpc<{ status: string }>('collect_checkin', { p_event: t.eventId, p_employee_id: 'D3' })).status).toBe('declined');
+    expect((await t.db.rpc<{ status: string }>('collect_checkin', { p_event: t.eventId, p_employee_id: 'NOBODY1' })).status).toBe('none');
+    await t.db.rpc('collect_checkin', { p_event: t.eventId, p_employee_id: 'D2' });
+    let q = await t.db.rpc<{ queue: { employee_id: string }[] }>('desk_queue', { p_event: t.eventId });
+    expect(q.queue.map((x) => x.employee_id)).toEqual(['D1', 'D2']);
+
+    // two distributors tap Collected at the same moment
+    const both = await Promise.allSettled([
+      t.db.rpc('desk_mark', { p_event: t.eventId, p_employee_id: 'D1', p_action: 'collect', p_by: 'Priya' }),
+      t.db.rpc('desk_mark', { p_event: t.eventId, p_employee_id: 'D1', p_action: 'collect', p_by: 'Arun' }),
+    ]);
+    expect(both.filter((r) => r.status === 'fulfilled')).toHaveLength(1);
+    expect((await t.db.rpc<{ status: string }>('collect_status', { p_event: t.eventId, p_employee_id: 'D1' })).status).toBe('collected');
+    // scanning again after collecting doesn't re-queue
+    await t.db.rpc('collect_checkin', { p_event: t.eventId, p_employee_id: 'D1' });
+    q = await t.db.rpc('desk_queue', { p_event: t.eventId });
+    expect(q.queue.map((x) => x.employee_id)).toEqual(['D2']);
+
+    await t.db.rpc('desk_mark', { p_event: t.eventId, p_employee_id: 'D1', p_action: 'undo', p_by: 'Priya' });
+    await t.db.rpc('desk_mark', { p_event: t.eventId, p_employee_id: 'D2', p_action: 'skip', p_by: 'Priya' });
+    q = await t.db.rpc('desk_queue', { p_event: t.eventId });
+    expect(q.queue.map((x) => x.employee_id)).toEqual(['D1']);
+    await expect(t.db.rpc('desk_mark', { p_event: t.eventId, p_employee_id: 'D3', p_action: 'collect', p_by: 'Priya' })).rejects.toSatisfy(dx('NOT_FOUND'));
+
+    const newPin = await t.db.rpc<{ version: number }>('admin_desk_new_pin', { p_event: t.eventId, p_actor: t.actorId });
+    expect(newPin.version).toBe(pin.version + 1);
+  });
+});

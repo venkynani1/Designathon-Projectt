@@ -6,13 +6,14 @@ const TABS = [
   { href: '/admin/goodies', label: 'Goodies', hint: 'photos, names, counts' },
   { href: '/admin/goodies/participants', label: 'Participants', hint: 'employee IDs & names' },
   { href: '/admin/survey', label: 'Link, QR & report', hint: 'share, live responses' },
+  { href: '/admin/goodies/distribution', label: 'Distribution', hint: 'desk link, PIN, collected' },
 ];
 
 /** The goodies hub: everything the organizer needs, in the order they need it. */
 export function GoodiesTabs() {
   const path = usePathname();
   return (
-    <nav className="grid gap-2 sm:grid-cols-3">
+    <nav className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
       {TABS.map((t, i) => {
         const on = path === t.href;
         return (
