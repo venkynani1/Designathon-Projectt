@@ -44,3 +44,17 @@ export function rosterFromText(text: string): RosterRow[] {
   if (rows.length === 0) throw new DxError('INVALID_INPUT', 'Paste at least one line like: EMP1001, Asha Rao');
   return rows;
 }
+
+export interface OfflineRow { employee_id: string; name: string; meal: string; goodie: string }
+
+/** Offline registrations sheet: Employee ID, Employee Name, Veg/Non-veg, Goodie. */
+export function offlineFromSheet(sheet: ParsedSheet): OfflineRow[] {
+  const c = rosterColumns(sheet.headers);
+  const find = (test: (h: string) => boolean) => sheet.headers.find((h) => test(h.toLowerCase().replace(/[^a-z]/g, '')));
+  const meal = find((h) => h.includes('veg') || h.includes('meal') || h.includes('food'));
+  const goodie = find((h) => h.includes('goodie') || h.includes('gift') || h.includes('item') || h.includes('swag'));
+  if (!c.id || !c.name || !meal || !goodie) {
+    throw new DxError('INVALID_INPUT', `The first row needs the headings "Employee ID", "Employee Name", "Veg/Non-veg" and "Goodie" (found: ${sheet.headers.join(', ')})`);
+  }
+  return sheet.rows.map((r) => ({ employee_id: r[c.id!] ?? '', name: r[c.name!] ?? '', meal: r[meal] ?? '', goodie: r[goodie] ?? '' }));
+}

@@ -9,7 +9,7 @@ import { GoodiesTabs } from '@/components/admin/GoodiesTabs';
 interface Choice { employee_id: string; name: string; goodie: string; chosen_at: string; registered: boolean; registered_name: string | null; email: string | null; team_number: number | null; team_name: string | null }
 interface Pending { employee_id: string; name: string; email: string | null; department: string | null; team_number: number | null; team_name: string | null }
 interface G { id: string; name: string; stock: number; reserved: number; is_active: boolean }
-interface Report { choices: Choice[]; pending: Pending[]; goodies: G[]; meals?: { veg: number; nonveg: number; by_employee: Record<string, string> }; attendance?: { yes: number; no: number; by_employee: Record<string, boolean>; declined?: { employee_id: string; name: string; at: string }[] } }
+interface Report { choices: Choice[]; pending: Pending[]; goodies: G[]; meals?: { veg: number; nonveg: number; by_employee: Record<string, string> }; attendance?: { yes: number; no: number; by_employee: Record<string, boolean>; declined?: { employee_id: string; name: string; at: string; came_at?: string | null }[] } }
 
 const when = (iso: string) => new Date(iso).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
 
@@ -47,6 +47,7 @@ export default function SurveyPage() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-3">
         <h1 className="mr-auto text-2xl font-black">Goodies</h1>
+        <Button variant="secondary" onClick={() => download('/api/admin/survey/reminders').catch((e) => setErr(e.message))}>Download reminder list</Button>
         <Button variant="secondary" onClick={() => download('/api/admin/survey/export').catch((e) => setErr(e.message))}>Download Excel report</Button>
       </div>
       <GoodiesTabs />
@@ -132,7 +133,7 @@ export default function SurveyPage() {
               <tbody className="divide-y divide-slate-100">
                 {(data?.attendance?.declined ?? []).filter((d) => !needle || `${d.employee_id} ${d.name}`.toLowerCase().includes(needle)).map((d) => (
                   <tr key={d.employee_id}>
-                    <td className="py-2 pr-3 font-mono">{d.employee_id}</td><td className="pr-3">{d.name}</td>
+                    <td className="py-2 pr-3 font-mono">{d.employee_id}</td><td className="pr-3">{d.name}{d.came_at && <span className="ml-2"><Badge tone="amber">Came anyway {when(d.came_at)}</Badge></span>}</td>
                     <td className="whitespace-nowrap pr-3 text-slate-500">{when(d.at)}</td>
                     <td className="text-right">{admin.atLeast('admin') && <button className="text-xs font-semibold text-rose-700 hover:underline" onClick={() => reset({ employee_id: d.employee_id, name: d.name, goodie: 'not attending' } as Choice)}>Clear</button>}</td>
                   </tr>

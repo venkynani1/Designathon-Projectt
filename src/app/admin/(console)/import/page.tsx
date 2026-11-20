@@ -4,6 +4,7 @@ import { api, ApiError } from '@/components/api';
 import { Alert, Badge, Button, Card, Field, teamLabel } from '@/components/ui';
 import { useAdmin } from '@/components/admin/AdminContext';
 import { RosterUpload } from '@/components/admin/RosterUpload';
+import { OfflineUpload } from '@/components/admin/OfflineUpload';
 
 interface Upload { id: string; headers: string[]; sample: Record<string, string>[]; row_count: number; fields: string[]; suggested_mapping: Record<string, string> }
 interface Plan {
@@ -66,6 +67,16 @@ export default function ImportPage() {
         </div>
         {admin.atLeast('admin') ? <RosterUpload /> : <Alert tone="amber">Only admins can upload the participant list.</Alert>}
         <a href="/admin/goodies/participants" className="inline-block text-sm font-semibold text-brand-700 hover:underline">View the participant list →</a>
+      </Card>
+
+      <Card className="space-y-3">
+        <div>
+          <h2 className="text-lg font-bold">Offline registrations</h2>
+          <p className="text-sm text-slate-600">People who registered offline: upload <strong>Employee ID, Employee Name, Veg/Non-veg and Goodie</strong>.
+            Their goodie is booked straight away (counts drop), and they collect it at the desk with the same QR as everyone else.
+            Leave Goodie empty to just add them to the list so they can choose with the goodies QR.</p>
+        </div>
+        {admin.atLeast('admin') ? <OfflineUpload /> : <Alert tone="amber">Only admins can upload offline registrations.</Alert>}
       </Card>
 
       <details className="rounded-2xl bg-white p-4 ring-1 ring-slate-200">

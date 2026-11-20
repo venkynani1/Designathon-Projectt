@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 
 interface View {
   status: 'ready' | 'collected' | 'declined' | 'none';
-  employee_id: string; name: string | null; goodie?: string; meal?: 'veg' | 'nonveg' | null;
+  employee_id: string; name: string | null; goodie?: string; meal?: 'veg' | 'nonveg' | null; came_at?: string | null;
   image?: string | null; collected_at?: string | null;
 }
 const KEY = 'dx-collect-emp';
@@ -102,7 +102,7 @@ export default function CollectPage() {
           <section className="rounded-3xl bg-white p-8 text-center shadow-lg ring-1 ring-slate-200">
             <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-slate-100 text-3xl">ℹ️</div>
             <p className="mt-4 text-xl font-black">{view.name ? `Hi ${first}` : view.employee_id}</p>
-            <p className="mt-2 text-slate-600">{view.status === 'declined' ? 'You told us you couldn’t attend, so no goodie was booked.' : 'No goodie is booked for this employee ID.'}</p>
+            <p className="mt-2 text-slate-600">{view.status === 'declined' ? 'You told us you couldn’t attend, so no goodie was booked. We’ve noted that you’re here.' : 'No goodie is booked for this employee ID.'}</p>
             <p className="mt-1 text-sm text-slate-500">Please speak to the organizers at the desk.</p>
           </section>
         )}

@@ -1,6 +1,6 @@
 'use client';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { api, ApiError } from '@/components/api';
+import { api, ApiError, download } from '@/components/api';
 import { Alert, Badge, Button, Card, Field, Modal } from '@/components/ui';
 import { useAdmin } from '@/components/admin/AdminContext';
 import { GoodiesTabs } from '@/components/admin/GoodiesTabs';
@@ -76,6 +76,7 @@ export default function ParticipantsPage() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-3">
         <h1 className="mr-auto text-2xl font-black">Goodies</h1>
+        <Button variant="secondary" onClick={() => download('/api/admin/survey/reminders').catch((e) => setErr(e.message))}>Reminder list</Button>
         {canEdit && <Button onClick={() => { setErr(''); setEdit({ employee_id: '', name: '', email: '', department: '' }); }}>+ Add person</Button>}
       </div>
       <GoodiesTabs />

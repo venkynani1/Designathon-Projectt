@@ -14,3 +14,11 @@ describe('participant list parsing', () => {
     ]);
   });
 });
+
+import { offlineFromSheet } from '@/lib/import/roster';
+describe('offline registrations sheet', () => {
+  it('maps the four columns', () => {
+    const rows = offlineFromSheet({ headers: ['Employee ID', 'Employee Name', 'Veg/Non-veg', 'Goodie'], rows: [{ 'Employee ID': '1001', 'Employee Name': 'A B', 'Veg/Non-veg': 'Non Veg', Goodie: 'Hoodie' }] });
+    expect(rows[0]).toEqual({ employee_id: '1001', name: 'A B', meal: 'Non Veg', goodie: 'Hoodie' });
+  });
+});

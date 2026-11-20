@@ -4,8 +4,9 @@ import QRCode from 'qrcode';
 
 interface Person { employee_id: string; name: string; goodie: string; meal: 'veg' | 'nonveg' | null; image: string | null; checked_in_at: string }
 interface Done { employee_id: string; name: string; goodie: string; collected_at: string; collected_by: string | null }
-interface Queue { queue: Person[]; recent: Done[]; collected: number; total: number; at: string }
-interface Lookup { status: string; employee_id: string; name: string | null; goodie?: string; meal?: string | null; collected_at?: string | null }
+interface Came { employee_id: string; name: string; came_at: string }
+interface Queue { queue: Person[]; recent: Done[]; came_anyway?: Came[]; collected: number; total: number; at: string }
+interface Lookup { status: string; employee_id: string; name: string | null; goodie?: string; meal?: string | null; collected_at?: string | null; came_at?: string | null }
 
 const time = (iso: string) => new Date(iso).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
 const MEAL: Record<string, string> = { veg: '🟢 Veg', nonveg: '🔴 Non-veg' };
@@ -78,7 +79,7 @@ export default function DeskPage() {
 
   function say(tone: 'ok' | 'err', text: string) { setToast({ tone, text }); setTimeout(() => setToast(null), 4000); }
 
-  async function mark(emp: string, action: 'collect' | 'undo' | 'skip', label: string) {
+  async function mark(emp: string, action: 'collect' | 'undo' | 'skip' | 'came', label: string) {
     setBusy(emp + action);
     try {
       await call('/api/desk/mark', { employee_id: emp, action });
@@ -138,7 +139,11 @@ export default function DeskPage() {
                     className="mt-2 w-full rounded-xl bg-emerald-600 py-2.5 font-bold text-white disabled:opacity-50">✓ Collected</button>
                 </>}
                 {found.status === 'collected' && <p className="text-sm text-emerald-700">Already collected {found.goodie}{found.collected_at ? ` at ${time(found.collected_at)}` : ''}</p>}
-                {found.status === 'declined' && <p className="text-sm text-slate-600">Said they are not attending — no goodie booked.</p>}
+                {found.status === 'declined' && <>
+                  <p className="text-sm text-slate-600">Said <strong>No</strong> (not attending) — no goodie booked.</p>
+                  <button disabled={!!busy} onClick={() => mark(found.employee_id, 'came', `${found.name ?? found.employee_id} marked: said No, came`)}
+                    className="mt-2 w-full rounded-xl bg-amber-500 py-2.5 font-bold text-amber-950 disabled:opacity-50">Mark as “Said No — came”</button>
+                </>}
                 {found.status === 'none' && <p className="text-sm text-slate-600">No goodie booked for this ID.</p>}
               </div>
             )}
@@ -177,6 +182,22 @@ export default function DeskPage() {
               ))}
             </div>
           </div>
+
+          {!!q?.came_anyway?.length && (
+            <div className="rounded-3xl bg-amber-50 p-4 ring-2 ring-amber-300">
+              <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-amber-900">Said No — but came ({q.came_anyway.length})</h2>
+              <p className="mb-2 text-xs text-amber-900">They told us they couldn’t attend, so no goodie was booked. Recorded as attended — refer them to the organizers if needed.</p>
+              <ul className="divide-y divide-amber-200 text-sm">
+                {q.came_anyway.map((c) => (
+                  <li key={c.employee_id} className="flex items-center gap-3 py-2">
+                    <span className="min-w-0 flex-1 truncate"><strong>{c.name}</strong> <span className="font-mono text-xs text-amber-800">{c.employee_id}</span></span>
+                    <span className="text-xs text-amber-800">{time(c.came_at)}</span>
+                    <button disabled={!!busy} onClick={() => mark(c.employee_id, 'came', `${c.name} noted`)} className="rounded-lg bg-white px-3 py-1 text-xs font-bold text-amber-900 ring-1 ring-amber-300">OK, noted</button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           {!!q?.recent.length && (
             <div className="rounded-3xl bg-white p-4 ring-1 ring-slate-200">

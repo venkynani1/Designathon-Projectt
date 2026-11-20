@@ -295,3 +295,43 @@ describe('goodie distribution desk', () => {
     expect(newPin.version).toBe(pin.version + 1);
   });
 });
+
+describe('offline registrations and said-No-but-came', () => {
+  it('books offline people (stock drops), lists those without a goodie, reports problems, and records came-anyway', async () => {
+    const mk = async (name: string, stock: number) => (await t.db.rpc<{ id: string }>('admin_upsert_goodie', {
+      p_event: t.eventId, p_id: null, p_name: name, p_description: null, p_stock: stock, p_image_url: null, p_is_active: true, p_sort_order: null, p_actor: t.actorId,
+    })).id;
+    await mk('Offline Tee', 1);
+    const res = await t.db.rpc<{ booked: number; listed: number; skipped: { problem: string }[] }>('admin_offline_import', {
+      p_event: t.eventId, p_actor: t.actorId, p_rows: [
+        { employee_id: '7001', name: 'Off One', meal: 'Non Veg', goodie: 'offline tee' },
+        { employee_id: '7002', name: 'Off Two', meal: 'Veg', goodie: 'Offline Tee' },      // out of stock
+        { employee_id: '7003', name: 'Off Three', meal: '', goodie: '' },                 // list only
+        { employee_id: '7004', name: 'Off Four', meal: 'veg', goodie: 'Unicorn' },        // unknown goodie
+        { employee_id: 'NO1', name: 'Nora One', meal: 'veg', goodie: 'Offline Tee' },     // NO1 may or may not exist; ignore
+      ],
+    });
+    expect(res.booked).toBe(1);
+    expect(res.listed).toBe(1);
+    expect(res.skipped.map((s) => s.problem).join(' | ')).toMatch(/out of stock.*unknown goodie/);
+    const v = await t.db.rpc<{ status: string; goodie: string; meal: string }>('collect_checkin', { p_event: t.eventId, p_employee_id: '7001' });
+    expect(v).toMatchObject({ status: 'ready', goodie: 'Offline Tee', meal: 'nonveg' });
+    expect((await t.db.rpc<Record<string, string>>('admin_choice_via', { p_event: t.eventId }))['7001']).toBe('offline');
+    // 7003 can now pick with the survey QR
+    expect((await t.db.rpc<{ found: boolean; name: string }>('survey_lookup', { p_event: t.eventId, p_employee_id: '7003' }))).toMatchObject({ found: true, name: 'Off Three' });
+
+    // said No, then scans at the desk
+    await t.db.rpc('set_event_flags', { p_event: t.eventId, p_flags: { goodies_open: true }, p_actor: t.actorId });
+    await t.db.rpc('survey_submit', { p_event: t.eventId, p_employee_id: '7003', p_name: '', p_goodie: null, p_meal: null, p_attending: false });
+    const came = await t.db.rpc<{ status: string; came_at: string | null }>('collect_checkin', { p_event: t.eventId, p_employee_id: '7003' });
+    expect(came.status).toBe('declined');
+    expect(came.came_at).not.toBeNull();
+    let q = await t.db.rpc<{ came_anyway: { employee_id: string }[] }>('desk_queue', { p_event: t.eventId });
+    expect(q.came_anyway.map((x) => x.employee_id)).toContain('7003');
+    await t.db.rpc('desk_mark', { p_event: t.eventId, p_employee_id: '7003', p_action: 'came', p_by: 'Priya' });
+    q = await t.db.rpc('desk_queue', { p_event: t.eventId });
+    expect(q.came_anyway.map((x) => x.employee_id)).not.toContain('7003');
+    const att = await t.db.rpc<{ came_anyway: number; declined: { employee_id: string; came_at: string | null }[] }>('admin_attendance_summary', { p_event: t.eventId });
+    expect(att.declined.find((d) => d.employee_id === '7003')?.came_at).toBeTruthy();
+  });
+});
