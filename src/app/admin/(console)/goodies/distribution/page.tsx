@@ -19,8 +19,9 @@ export default function DistributionPage() {
   const deskUrl = `${origin}/desk`;
   async function copy(text: string, k: string) { try { await navigator.clipboard.writeText(text); setCopied(k); setTimeout(() => setCopied(''), 2000); } catch { /* */ } }
   async function newPin() {
-    if (!window.confirm('Create a new desk PIN? Every distributor will be signed out and must sign in with the new PIN.')) return;
-    try { await api('/api/admin/distribution/pin', { body: {} }); await load(); } catch (e) { setErr(e instanceof Error ? e.message : 'Failed'); }
+    const pin = window.prompt('New desk PIN (4–8 digits). Every distributor will be signed out and must sign in with the new PIN.', '');
+    if (pin === null) return;
+    try { await api('/api/admin/distribution/pin', { body: { pin: pin.trim() } }); await load(); } catch (e) { setErr(e instanceof Error ? e.message : 'Failed'); }
   }
   const s = d?.summary;
   return (
@@ -45,7 +46,7 @@ export default function DistributionPage() {
             <span className="text-sm text-slate-600">Desk PIN:</span>
             <span className="rounded-lg bg-slate-900 px-3 py-1.5 font-mono text-lg font-bold tracking-widest text-white">{d.desk.pin}</span>
             <Button variant="secondary" onClick={() => copy(`Goodie desk: ${deskUrl}\nPIN: ${d.desk!.pin}`, 'pin')}>{copied === 'pin' ? 'Copied ✓' : 'Copy link + PIN'}</Button>
-            {admin.atLeast('admin') && <button className="text-xs font-semibold text-rose-700 hover:underline" onClick={newPin}>New PIN</button>}
+            {admin.atLeast('admin') && <button className="text-xs font-semibold text-rose-700 hover:underline" onClick={newPin}>Change PIN</button>}
           </div>
         )}
       </Card>
