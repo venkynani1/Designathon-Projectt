@@ -154,7 +154,7 @@ export function GoodiesSurvey({ initial = null }: { initial?: Feed | null }) {
               <label className="block text-xs font-bold uppercase tracking-wide text-slate-500" htmlFor="emp">Your employee ID</label>
               <input id="emp" className="input mt-1 h-12 text-lg font-semibold tracking-wide" value={emp}
                 onChange={(e) => { setEmp(e.target.value.toUpperCase().replace(/\s/g, '')); setErr(''); }}
-                maxLength={40} autoCapitalize="characters" autoComplete="off" placeholder="e.g. EMP10234" />
+                maxLength={40} autoCapitalize="characters" autoComplete="off" placeholder="e.g. 1000***" />
               <div className="mt-3 min-h-[3rem]">
                 {looking && <p className="text-sm text-slate-400">Checking…</p>}
                 {!looking && look?.chosen && (
