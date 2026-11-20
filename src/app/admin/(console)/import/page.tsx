@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { api, ApiError } from '@/components/api';
 import { Alert, Badge, Button, Card, Field, teamLabel } from '@/components/ui';
 import { useAdmin } from '@/components/admin/AdminContext';
+import { RosterUpload } from '@/components/admin/RosterUpload';
 
 interface Upload { id: string; headers: string[]; sample: Record<string, string>[]; row_count: number; fields: string[]; suggested_mapping: Record<string, string> }
 interface Plan {
@@ -57,7 +58,19 @@ export default function ImportPage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-black">Import online registrations</h1>
+      <h1 className="text-2xl font-black">Import</h1>
+      <Card className="space-y-3">
+        <div>
+          <h2 className="text-lg font-bold">Participant list</h2>
+          <p className="text-sm text-slate-600">Upload an Excel file with just <strong>Employee ID</strong> and <strong>Employee Name</strong>. These people can choose goodies, and their name fills in automatically from their ID.</p>
+        </div>
+        {admin.atLeast('admin') ? <RosterUpload /> : <Alert tone="amber">Only admins can upload the participant list.</Alert>}
+        <a href="/admin/goodies/participants" className="inline-block text-sm font-semibold text-brand-700 hover:underline">View the participant list →</a>
+      </Card>
+
+      <details className="rounded-2xl bg-white p-4 ring-1 ring-slate-200">
+        <summary className="cursor-pointer font-semibold text-slate-600">Team registration import (only needed for teams &amp; problem statements)</summary>
+        <div className="mt-4 space-y-4">
       {result && <Alert tone="green">{result}</Alert>}
       {err && <Alert>{err}</Alert>}
       <Card className="space-y-4">
@@ -135,6 +148,8 @@ export default function ImportPage() {
           )}
         </Card>
       )}
+        </div>
+      </details>
     </div>
   );
 }

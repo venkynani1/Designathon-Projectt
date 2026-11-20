@@ -1,15 +1,15 @@
 'use client';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api, ApiError } from '@/components/api';
 import { Alert, Badge, Button, Card, Field, Modal } from '@/components/ui';
 import { useAdmin } from '@/components/admin/AdminContext';
 import { GoodiesTabs } from '@/components/admin/GoodiesTabs';
+import { RosterUpload } from '@/components/admin/RosterUpload';
 
 interface Person { employee_id: string; name: string; email: string | null; department: string | null; goodie: string | null; chosen_at: string | null }
 interface ImportResult { added: number; updated: number; total: number; skipped: { line: number; employee_id: string | null; name: string | null; problem: string }[] }
 type Draft = { original?: string; employee_id: string; name: string; email: string; department: string };
 
-const TEMPLATE = 'Employee ID,Name\nEMP1001,Asha Rao\nEMP1002,Ravi Kumar\n';
 
 export default function ParticipantsPage() {
   const admin = useAdmin();
@@ -25,8 +25,6 @@ export default function ParticipantsPage() {
   const [replace, setReplace] = useState(false);
   const [busy, setBusy] = useState(false);
   const [edit, setEdit] = useState<Draft | null>(null);
-  const [drag, setDrag] = useState(false);
-  const fileRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(() => api<{ people: Person[] }>('/api/admin/roster').then((r) => setPeople(r.people)).catch((e) => setErr(e.message)), []);
   useEffect(() => { load(); const t = setInterval(load, 15000); return () => clearInterval(t); }, [load]);
@@ -67,11 +65,6 @@ export default function ParticipantsPage() {
     try { const r = await api<{ removed: number }>('/api/admin/roster', { method: 'DELETE' }); setMsg(`Removed ${r.removed} people.`); await load(); }
     catch (e) { setErr(e instanceof Error ? e.message : 'Failed'); }
   }
-  function template() {
-    const url = URL.createObjectURL(new Blob([TEMPLATE], { type: 'text/csv' }));
-    const a = document.createElement('a'); a.href = url; a.download = 'participants-template.csv'; a.click();
-    setTimeout(() => URL.revokeObjectURL(url), 10000);
-  }
 
   const needle = q.trim().toLowerCase();
   const shown = useMemo(() => (people ?? []).filter((p) =>
@@ -102,28 +95,12 @@ export default function ParticipantsPage() {
           <div className="flex flex-wrap items-start gap-3">
             <div className="mr-auto">
               <h2 className="font-bold">Upload the participant list</h2>
-              <p className="text-sm text-slate-600">Excel (.xlsx) or CSV with two columns: <strong>Employee ID</strong> and <strong>Name</strong>.
+              <p className="text-sm text-slate-600">Excel file with two columns: <strong>Employee ID</strong> and <strong>Employee Name</strong>.
                 When someone types their employee ID in the survey, their name fills in automatically.</p>
             </div>
-            <button type="button" onClick={template} className="text-sm font-semibold text-brand-700 hover:underline">Download template</button>
           </div>
-          <div
-            onDragOver={(e) => { e.preventDefault(); setDrag(true); }} onDragLeave={() => setDrag(false)}
-            onDrop={(e) => { e.preventDefault(); setDrag(false); const f = e.dataTransfer.files?.[0]; if (f) upload({ file: f }); }}
-            className={`mt-3 flex flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed px-4 py-8 text-center transition ${drag ? 'border-brand-500 bg-brand-50' : 'border-slate-300 bg-slate-50'}`}>
-            <p className="text-3xl">📄</p>
-            <p className="text-sm text-slate-600">Drag the file here, or</p>
-            <Button busy={busy} onClick={() => fileRef.current?.click()}>Choose file</Button>
-            <input ref={fileRef} type="file" accept=".xlsx,.csv" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) upload({ file: f }); }} />
-            <button type="button" className="text-xs font-semibold text-slate-500 hover:underline" onClick={() => setShowPaste((v) => !v)}>…or paste the list instead</button>
-          </div>
-          {showPaste && (
-            <div className="mt-3 space-y-2">
-              <textarea className="input h-40 font-mono text-sm" value={paste} onChange={(e) => setPaste(e.target.value)}
-                placeholder={'One person per line, e.g.\nEMP1001, Asha Rao\nEMP1002, Ravi Kumar'} />
-              <Button busy={busy} disabled={!paste.trim()} onClick={() => upload({ text: paste })}>Add these people</Button>
-            </div>
-          )}
+          <div className="mt-3"><RosterUpload replace={replace} confirmReplace={() => !people?.length || window.confirm(`Replace the whole list (${people.length} people) with this upload?`)} onDone={() => load()} /></div>
+          <button type="button" className="mt-2 text-xs font-semibold text-slate-500 hover:underline" onClick={() => setShowPaste((v) => !v)}>…or paste the list instead</button>
           <label className="mt-3 flex items-center gap-2 text-sm text-slate-600">
             <input type="checkbox" checked={replace} onChange={(e) => setReplace(e.target.checked)} />
             Replace the whole list (otherwise new people are added and existing ones updated)
