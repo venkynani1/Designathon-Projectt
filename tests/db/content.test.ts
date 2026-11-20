@@ -140,8 +140,9 @@ describe('goodies participant list', () => {
     // typed name is ignored — the list's name wins
     const ok = await t.db.rpc<{ name: string }>('survey_submit', { p_event: t.eventId, p_employee_id: 'L100', p_name: 'x', p_goodie: g, p_meal: 'veg', p_attending: true });
     expect(ok.name).toBe('Asha Rao');
-    const feed = await t.db.rpc<{ recent: { who: string; goodie: string }[]; list_required: boolean }>('survey_feed', { p_event: t.eventId });
-    expect(feed.recent[0]).toMatchObject({ who: 'Asha', goodie: 'Sticker pack' });
+    const feed = await t.db.rpc<{ recent?: unknown; list_required: boolean; goodies: { name: string; left: number }[] }>('survey_feed', { p_event: t.eventId });
+    expect(feed.recent).toBeUndefined(); // no names in the public feed
+    expect(feed.goodies.find((x) => x.name === 'Sticker pack')?.left).toBe(9);
     expect(feed.list_required).toBe(true);
 
     const rep = await t.db.rpc<{ pending: { employee_id: string }[]; roster_size: number }>('admin_survey_report', { p_event: t.eventId });

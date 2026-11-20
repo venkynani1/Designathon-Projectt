@@ -4,8 +4,7 @@ import { api, ApiError } from '@/components/api';
 import { Button, Modal } from '@/components/ui';
 
 interface Goodie { id: string; name: string; description: string | null; stock: number; left: number; image: string | null }
-interface Pick { who: string; goodie: string; at: string }
-export interface Feed { event: string; open: boolean; list_required?: boolean; goodies: Goodie[]; recent?: Pick[]; chosen_total?: number; at: string }
+export interface Feed { event: string; open: boolean; list_required?: boolean; goodies: Goodie[]; chosen_total?: number; at: string }
 type Meal = 'veg' | 'nonveg';
 const MEAL_LABEL: Record<Meal, string> = { veg: 'Veg', nonveg: 'Non-veg' };
 interface Done { goodie: string | null; name: string; employee_id: string; meal?: Meal | null; attending?: boolean | null }
@@ -13,14 +12,6 @@ interface Lookup { employee_id: string; found: boolean; name: string | null; lis
 
 const POLL_MS = 1500;
 const DONE_KEY = 'dx-goodie-choice';
-
-function ago(at: string, now: string): string {
-  const s = Math.max(0, Math.round((Date.parse(now) - Date.parse(at)) / 1000));
-  if (s < 10) return 'just now';
-  if (s < 60) return `${s}s ago`;
-  if (s < 3600) return `${Math.floor(s / 60)} min ago`;
-  return `${Math.floor(s / 3600)} h ago`;
-}
 
 export function GoodiesSurvey({ initial = null }: { initial?: Feed | null }) {
   const [feed, setFeed] = useState<Feed | null>(initial);
@@ -118,7 +109,6 @@ export function GoodiesSurvey({ initial = null }: { initial?: Feed | null }) {
   }
 
   const totalLeft = feed?.goodies.reduce((s, g) => s + g.left, 0) ?? 0;
-  const recent = feed?.recent ?? [];
 
   return (
     <div className="min-h-screen bg-slate-50 pb-28">
@@ -220,21 +210,6 @@ export function GoodiesSurvey({ initial = null }: { initial?: Feed | null }) {
             )}
 
             {attending === true && (<>
-            {recent.length > 0 && feed && (
-              <section className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200">
-                <p className="flex items-center gap-2 px-4 pt-3 text-xs font-bold uppercase tracking-wide text-slate-500">
-                  <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" /> Just picked
-                </p>
-                <ul className="flex gap-2 overflow-x-auto px-4 py-3 [scrollbar-width:none]">
-                  {recent.map((r, i) => (
-                    <li key={`${r.at}-${i}`} className="shrink-0 rounded-full bg-slate-100 px-3 py-1.5 text-sm">
-                      <strong>{r.who}</strong> → {r.goodie} <span className="text-xs text-slate-400">· {ago(r.at, feed.at)}</span>
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            )}
-
             <section>
               <h2 className="mb-2 mt-2 px-1 text-sm font-bold uppercase tracking-wide text-slate-500">Tap one goodie</h2>
               {note && <div className="mb-3 rounded-xl bg-amber-50 p-3 text-sm font-medium text-amber-900 ring-1 ring-amber-200">{note}</div>}
