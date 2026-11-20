@@ -27,7 +27,7 @@ const MEAL: Record<string, string> = { veg: 'Veg', nonveg: 'Non-veg' };
 
 export async function buildSurveyReport(eventName: string, d: SurveyReport, auto: Set<string> = new Set(),
   meals: { veg: number; nonveg: number; by_employee: Record<string, string> } = { veg: 0, nonveg: 0, by_employee: {} },
-  att: { yes: number; no: number; by_employee: Record<string, boolean> } = { yes: 0, no: 0, by_employee: {} }): Promise<Buffer> {
+  att: { yes: number; no: number; by_employee: Record<string, boolean>; declined?: { employee_id: string; name: string; at: string }[] } = { yes: 0, no: 0, by_employee: {} }): Promise<Buffer> {
   const wb = new ExcelJS.Workbook();
   wb.creator = 'Gen AI Designathon';
   wb.created = new Date();
@@ -40,12 +40,14 @@ export async function buildSurveyReport(eventName: string, d: SurveyReport, auto
     d.goodies.map((g) => [g.name, g.stock, g.reserved, Math.max(g.stock - g.reserved, 0), g.is_active ? 'Yes' : 'Hidden']));
   sheet(wb, 'Meal counts', [['Meal', 16], ['People', 12]], [['Veg', meals.veg], ['Non-veg', meals.nonveg], ['Total', meals.veg + meals.nonveg]]);
   sheet(wb, 'Attendance 27 Nov', [['Attending?', 16], ['People', 12]], [['Yes', att.yes], ['No', att.no], ['Total', att.yes + att.no]]);
-  sheet(wb, 'Not chosen yet', [['Employee ID', 16], ['Name', 28], ['Email', 30], ['Department', 20], ['Team', 12]],
+  sheet(wb, 'Not attending', [['Employee ID', 16], ['Name', 28], ['Responded at (IST)', 20]],
+    (att.declined ?? []).map((d) => [d.employee_id, d.name, ist(d.at)]), [1]);
+  sheet(wb, 'No response yet', [['Employee ID', 16], ['Name', 28], ['Email', 30], ['Department', 20], ['Team', 12]],
     d.pending.map((p) => [p.employee_id, p.name, p.email ?? '', p.department ?? '', p.team_number ? teamLabel(p.team_number) : '']), [1]);
   const about = wb.addWorksheet('About');
   about.addRow([`${eventName} — goodies survey report`]);
   about.addRow([`Generated ${ist(new Date().toISOString())} IST`]);
-  about.addRow([`${d.choices.length} responses · ${d.pending.length} registered participants have not chosen yet`]);
+  about.addRow([`${d.choices.length} attending with a goodie · ${att.no} not attending · ${d.pending.length} no response yet`]);
   about.addRow(['"Not found" = the employee ID is not in the uploaded participant list or team registrations.']);
   return Buffer.from(await wb.xlsx.writeBuffer());
 }

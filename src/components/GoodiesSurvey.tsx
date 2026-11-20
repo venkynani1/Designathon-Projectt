@@ -8,8 +8,8 @@ interface Pick { who: string; goodie: string; at: string }
 export interface Feed { event: string; open: boolean; list_required?: boolean; goodies: Goodie[]; recent?: Pick[]; chosen_total?: number; at: string }
 type Meal = 'veg' | 'nonveg';
 const MEAL_LABEL: Record<Meal, string> = { veg: 'Veg', nonveg: 'Non-veg' };
-interface Done { goodie: string; name: string; employee_id: string; meal?: Meal | null; attending?: boolean | null }
-interface Lookup { employee_id: string; found: boolean; name: string | null; list_required: boolean; chosen: string | null }
+interface Done { goodie: string | null; name: string; employee_id: string; meal?: Meal | null; attending?: boolean | null }
+interface Lookup { employee_id: string; found: boolean; name: string | null; list_required: boolean; chosen: string | null; declined?: boolean }
 
 const POLL_MS = 1500;
 const DONE_KEY = 'dx-goodie-choice';
@@ -96,14 +96,14 @@ export function GoodiesSurvey({ initial = null }: { initial?: Feed | null }) {
 
   const listRequired = look?.list_required ?? feed?.list_required ?? false;
   const name = look?.found ? look.name ?? '' : typedName;
-  const idOk = !!look && !looking && !look.chosen && (look.found || !listRequired);
-  const ready = idOk && name.trim().length >= 2 && !!picked && !!meal && attending !== null && !!feed?.open;
+  const idOk = !!look && !looking && !look.chosen && !look.declined && (look.found || !listRequired);
+  const ready = idOk && name.trim().length >= 2 && attending !== null && (attending === false || (!!picked && !!meal)) && !!feed?.open;
 
   async function submit() {
-    if (!picked) return;
+    if (attending && !picked) return;
     setBusy(true); setErr('');
     try {
-      const r = await api<Done & { feed: Feed }>('/api/survey/submit', { body: { employee_id: emp, name, goodie_id: picked.id, meal, attending } });
+      const r = await api<Done & { feed: Feed }>('/api/survey/submit', { body: { employee_id: emp, name, goodie_id: attending ? picked?.id : null, meal: attending ? meal : null, attending } });
       apply(r.feed);
       const d = { goodie: r.goodie, name: r.name, employee_id: r.employee_id, meal: r.meal ?? meal, attending: r.attending ?? attending };
       try { localStorage.setItem(DONE_KEY, JSON.stringify(d)); } catch { /* private mode */ }
@@ -126,7 +126,7 @@ export function GoodiesSurvey({ initial = null }: { initial?: Feed | null }) {
         <div className="mx-auto max-w-3xl">
           <p className="text-xs font-bold uppercase tracking-[0.25em] text-white/70">{feed?.event ?? 'Gen AI Designathon'}</p>
           <h1 className="mt-1 text-3xl font-black tracking-tight sm:text-4xl">Pick your goodie 🎁</h1>
-          <p className="mt-1 text-white/85">Enter your employee ID, choose one, and you’re done.</p>
+          <p className="mt-1 text-white/85">Enter your employee ID, confirm if you’re coming, then pick your goodie.</p>
           <div className="mt-4 flex flex-wrap items-center gap-2 text-sm">
             <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 font-semibold backdrop-blur">
               <span className={`h-2 w-2 rounded-full ${offline ? 'bg-amber-300' : 'animate-pulse bg-emerald-300'}`} />
@@ -142,10 +142,11 @@ export function GoodiesSurvey({ initial = null }: { initial?: Feed | null }) {
         {done ? (
           <section className="rounded-3xl bg-white p-8 text-center shadow-lg ring-1 ring-slate-200">
             <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 text-3xl text-emerald-700">✓</div>
-            <h2 className="mt-4 text-2xl font-black">You’re all set, {done.name.split(' ')[0]}!</h2>
-            <p className="mt-2 text-slate-600">Your goodie: <strong className="text-slate-900">{done.goodie}</strong></p>
+            <h2 className="mt-4 text-2xl font-black">{done.goodie ? 'You’re all set' : 'Noted'}, {done.name.split(' ')[0]}!</h2>
+            {done.goodie ? <p className="mt-2 text-slate-600">Your goodie: <strong className="text-slate-900">{done.goodie}</strong></p>
+              : <p className="mt-2 text-slate-600">Thanks for letting us know you can’t attend on 27 November.</p>}
             {done.meal && <p className="mt-1 text-slate-600">Meal: <strong className="text-slate-900">{MEAL_LABEL[done.meal]}</strong></p>}
-            {done.attending != null && <p className="mt-1 text-slate-600">Attending on 27 Nov: <strong className="text-slate-900">{done.attending ? 'Yes' : 'No'}</strong></p>}
+            {done.goodie && done.attending != null && <p className="mt-1 text-slate-600">Attending on 27 Nov: <strong className="text-slate-900">{done.attending ? 'Yes' : 'No'}</strong></p>}
             <p className="mt-1 text-sm text-slate-500">Employee ID {done.employee_id}</p>
             <button className="mt-6 text-xs text-slate-400 underline" onClick={() => { try { localStorage.removeItem(DONE_KEY); } catch { /* */ } setDone(null); setEmp(''); setPick(null); setTypedName(''); setMeal(null); setAttending(null); }}>
               Choosing for someone else on this phone?
@@ -171,19 +172,24 @@ export function GoodiesSurvey({ initial = null }: { initial?: Feed | null }) {
                     <strong>{look.name ?? look.employee_id}</strong> has already chosen <strong>{look.chosen}</strong>. Only one goodie per person.
                   </div>
                 )}
-                {!looking && look && !look.chosen && look.found && (
+                {!looking && look?.declined && (
+                  <div className="rounded-xl bg-slate-100 p-3 text-sm text-slate-800 ring-1 ring-slate-200">
+                    <strong>{look.name ?? look.employee_id}</strong> has already told us they can’t attend. Contact the organizers to change this.
+                  </div>
+                )}
+                {!looking && look && !look.chosen && !look.declined && look.found && (
                   <div className="flex items-center gap-3 rounded-xl bg-brand-50 p-3 ring-1 ring-brand-100">
                     <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-600 text-lg font-black text-white">{(look.name ?? '?').charAt(0)}</span>
                     <div><p className="text-xs text-slate-500">Hi there 👋</p><p className="font-bold text-slate-900">{look.name}</p></div>
                     <span className="ml-auto text-xl text-emerald-600">✓</span>
                   </div>
                 )}
-                {!looking && look && !look.chosen && !look.found && listRequired && (
+                {!looking && look && !look.chosen && !look.declined && !look.found && listRequired && (
                   <div className="rounded-xl bg-rose-50 p-3 text-sm text-rose-900 ring-1 ring-rose-200">
                     We couldn’t find <strong>{look.employee_id}</strong> in the participant list. Check the ID, or contact the organizers.
                   </div>
                 )}
-                {!looking && look && !look.chosen && !look.found && !listRequired && (
+                {!looking && look && !look.chosen && !look.declined && !look.found && !listRequired && (
                   <div>
                     <label className="block text-xs font-bold uppercase tracking-wide text-slate-500" htmlFor="nm">Your full name</label>
                     <input id="nm" className="input mt-1 h-12" value={typedName} onChange={(e) => setTypedName(e.target.value)} maxLength={100} autoComplete="name" placeholder="Your name" />
@@ -193,6 +199,27 @@ export function GoodiesSurvey({ initial = null }: { initial?: Feed | null }) {
               </div>
             </section>
 
+            <section className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
+              <h2 className="text-sm font-bold uppercase tracking-wide text-slate-500">Will you attend on Friday, 27 November?</h2>
+              <div className="mt-3 grid grid-cols-2 gap-3" role="radiogroup" aria-label="Attending on 27 November">
+                {([true, false] as const).map((v) => (
+                  <button key={String(v)} type="button" role="radio" aria-checked={attending === v} onClick={() => setAttending(v)}
+                    className={`rounded-2xl px-4 py-4 text-lg font-bold ring-2 transition active:scale-[0.98] ${attending === v
+                      ? (v ? 'bg-brand-50 text-brand-800 ring-brand-600' : 'bg-slate-100 text-slate-800 ring-slate-500')
+                      : 'bg-white text-slate-700 ring-slate-200'}`}>
+                    {v ? '✓ Yes, I’ll be there' : 'No'}
+                  </button>
+                ))}
+              </div>
+            </section>
+
+            {attending === false && (
+              <div className="rounded-2xl bg-slate-100 p-4 text-sm text-slate-700 ring-1 ring-slate-200">
+                No problem — tap <strong>Submit</strong> to let us know you can’t make it. No goodie or meal will be booked for you.
+              </div>
+            )}
+
+            {attending === true && (<>
             {recent.length > 0 && feed && (
               <section className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200">
                 <p className="flex items-center gap-2 px-4 pt-3 text-xs font-bold uppercase tracking-wide text-slate-500">
@@ -264,20 +291,8 @@ export function GoodiesSurvey({ initial = null }: { initial?: Feed | null }) {
                 ))}
               </div>
             </section>
+            </>)}
 
-            <section className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
-              <h2 className="text-sm font-bold uppercase tracking-wide text-slate-500">Will you attend on Friday, 27 November?</h2>
-              <div className="mt-3 grid grid-cols-2 gap-3" role="radiogroup" aria-label="Attending on 27 November">
-                {([true, false] as const).map((v) => (
-                  <button key={String(v)} type="button" role="radio" aria-checked={attending === v} onClick={() => setAttending(v)}
-                    className={`rounded-2xl px-4 py-4 text-lg font-bold ring-2 transition active:scale-[0.98] ${attending === v
-                      ? (v ? 'bg-brand-50 text-brand-800 ring-brand-600' : 'bg-slate-100 text-slate-800 ring-slate-500')
-                      : 'bg-white text-slate-700 ring-slate-200'}`}>
-                    {v ? '✓ Yes, I’ll be there' : 'No'}
-                  </button>
-                ))}
-              </div>
-            </section>
           </>
         )}
       </main>
@@ -286,18 +301,19 @@ export function GoodiesSurvey({ initial = null }: { initial?: Feed | null }) {
         <div className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white/95 p-3 backdrop-blur">
           <div className="mx-auto flex max-w-3xl items-center gap-3">
             <p className="min-w-0 flex-1 truncate text-sm text-slate-600">
-              {!idOk ? 'Enter your employee ID' : !picked ? 'Tap a goodie' : !meal ? 'Choose Veg or Non-veg' : attending === null ? 'Confirm attendance on 27 Nov' : <><strong className="text-slate-900">{picked.name}</strong> · {MEAL_LABEL[meal]}</>}
+              {!idOk ? 'Enter your employee ID' : attending === null ? 'Will you attend on 27 Nov?' : attending === false ? 'Not attending on 27 Nov' : !picked ? 'Tap a goodie' : !meal ? 'Choose Veg or Non-veg' : <><strong className="text-slate-900">{picked.name}</strong> · {MEAL_LABEL[meal]}</>}
             </p>
             <Button className="px-6" disabled={!ready} onClick={() => { setErr(''); setConfirm(true); }}>Submit</Button>
           </div>
         </div>
       )}
 
-      <Modal open={confirm && !!picked} title="Confirm your choice" onClose={() => setConfirm(false)}>
-        {picked && (
+      <Modal open={confirm && (attending === false || !!picked)} title="Confirm" onClose={() => setConfirm(false)}>
+        {(attending === false || picked) && (
           <div className="space-y-3">
+            {attending === false ? <p><strong>{name.trim()}</strong> ({emp}) will <strong>not attend</strong> on 27 November. No goodie or meal will be booked.</p> : picked && <>
             <p><strong>{name.trim()}</strong> ({emp}) is choosing <strong>{picked.name}</strong>{meal && <> with a <strong>{MEAL_LABEL[meal]}</strong> meal</>}.</p>
-            <p>Attending on 27 November: <strong>{attending ? 'Yes' : 'No'}</strong></p>
+            </>}
             <p className="text-sm text-slate-500">One submission per person — it can’t be changed afterwards.</p>
             <div className="flex justify-end gap-2">
               <Button variant="secondary" onClick={() => setConfirm(false)}>Back</Button>

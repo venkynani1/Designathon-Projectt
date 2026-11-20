@@ -201,7 +201,7 @@ describe('meal preference', () => {
     await t.db.rpc('admin_roster_import', { p_event: t.eventId, p_rows: [{ employee_id: 'MEAL1', name: 'Meal One' }, { employee_id: 'MEAL2', name: 'Meal Two' }], p_replace: false, p_actor: t.actorId });
     await expect(t.db.rpc('survey_submit', { p_event: t.eventId, p_employee_id: 'MEAL1', p_name: '', p_goodie: g, p_meal: 'fish', p_attending: true })).rejects.toSatisfy(dx('INVALID_INPUT'));
     expect((await t.db.rpc<{ meal: string }>('survey_submit', { p_event: t.eventId, p_employee_id: 'MEAL1', p_name: '', p_goodie: g, p_meal: 'veg', p_attending: true })).meal).toBe('veg');
-    await t.db.rpc('survey_submit', { p_event: t.eventId, p_employee_id: 'MEAL2', p_name: '', p_goodie: g, p_meal: 'nonveg', p_attending: false });
+    await t.db.rpc('survey_submit', { p_event: t.eventId, p_employee_id: 'MEAL2', p_name: '', p_goodie: g, p_meal: 'nonveg', p_attending: true });
     await expect(t.db.rpc('survey_submit', { p_event: t.eventId, p_employee_id: 'MEAL2', p_name: '', p_goodie: g, p_meal: 'veg', p_attending: true })).rejects.toSatisfy(dx('ALREADY_RESERVED'));
     const m = await t.db.rpc<{ by_employee: Record<string, string> }>('admin_meal_summary', { p_event: t.eventId });
     expect(m.by_employee).toMatchObject({ MEAL1: 'veg', MEAL2: 'nonveg', AP1: 'nonveg', AP2: 'nonveg' });
@@ -218,5 +218,33 @@ describe('attendance on 27 Nov', () => {
     expect((await t.db.rpc<{ attending: boolean }>('survey_submit', { p_event: t.eventId, p_employee_id: 'ATT1', p_name: '', p_goodie: g, p_meal: 'veg', p_attending: false })).attending).toBe(false);
     const a = await t.db.rpc<{ by_employee: Record<string, boolean> }>('admin_attendance_summary', { p_event: t.eventId });
     expect(a.by_employee).toMatchObject({ ATT1: false, AP1: true });
+  });
+});
+
+describe('attendance first', () => {
+  it('"No" records not attending with no goodie or meal; one response per person', async () => {
+    const g = (await t.db.rpc<{ id: string }>('admin_upsert_goodie', {
+      p_event: t.eventId, p_id: null, p_name: 'Decline test cap', p_description: null, p_stock: 2, p_image_url: null, p_is_active: true, p_sort_order: null, p_actor: t.actorId,
+    })).id;
+    await t.db.rpc('admin_roster_import', { p_event: t.eventId, p_rows: [{ employee_id: 'NO1', name: 'Nora One' }, { employee_id: 'YES1', name: 'Yash One' }], p_replace: false, p_actor: t.actorId });
+    const r = await t.db.rpc<{ goodie: string | null; attending: boolean }>('survey_submit', { p_event: t.eventId, p_employee_id: 'NO1', p_name: '', p_goodie: null, p_meal: null, p_attending: false });
+    expect(r).toMatchObject({ goodie: null, attending: false });
+    // can't come back and take a goodie
+    await expect(t.db.rpc('survey_submit', { p_event: t.eventId, p_employee_id: 'NO1', p_name: '', p_goodie: g, p_meal: 'veg', p_attending: true })).rejects.toSatisfy(dx('ALREADY_RESERVED'));
+    // "Yes" still needs goodie + meal
+    await expect(t.db.rpc('survey_submit', { p_event: t.eventId, p_employee_id: 'YES1', p_name: '', p_goodie: g, p_meal: null, p_attending: true })).rejects.toSatisfy(dx('INVALID_INPUT'));
+    await t.db.rpc('survey_submit', { p_event: t.eventId, p_employee_id: 'YES1', p_name: '', p_goodie: g, p_meal: 'veg', p_attending: true });
+    await expect(t.db.rpc('survey_submit', { p_event: t.eventId, p_employee_id: 'YES1', p_name: '', p_goodie: null, p_meal: null, p_attending: false })).rejects.toSatisfy(dx('ALREADY_RESERVED'));
+    // stock untouched by the decline
+    const feed = await t.db.rpc<{ goodies: { name: string; left: number }[] }>('survey_feed', { p_event: t.eventId });
+    expect(feed.goodies.find((x) => x.name === 'Decline test cap')?.left).toBe(1);
+    const look = await t.db.rpc<{ declined: boolean }>('survey_lookup', { p_event: t.eventId, p_employee_id: 'NO1' });
+    expect(look.declined).toBe(true);
+    const att = await t.db.rpc<{ by_employee: Record<string, boolean>; declined: { employee_id: string }[] }>('admin_attendance_summary', { p_event: t.eventId });
+    expect(att.by_employee).toMatchObject({ NO1: false, YES1: true });
+    const rep = await t.db.rpc<{ pending: { employee_id: string }[] }>('admin_survey_report', { p_event: t.eventId });
+    expect(rep.pending.map((p) => p.employee_id)).not.toContain('NO1');
+    await t.db.rpc('admin_reset_choice', { p_event: t.eventId, p_employee_id: 'NO1', p_actor: t.actorId });
+    expect((await t.db.rpc<{ declined: boolean }>('survey_lookup', { p_event: t.eventId, p_employee_id: 'NO1' })).declined).toBe(false);
   });
 });

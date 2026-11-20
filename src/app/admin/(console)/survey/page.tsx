@@ -9,7 +9,7 @@ import { GoodiesTabs } from '@/components/admin/GoodiesTabs';
 interface Choice { employee_id: string; name: string; goodie: string; chosen_at: string; registered: boolean; registered_name: string | null; email: string | null; team_number: number | null; team_name: string | null }
 interface Pending { employee_id: string; name: string; email: string | null; department: string | null; team_number: number | null; team_name: string | null }
 interface G { id: string; name: string; stock: number; reserved: number; is_active: boolean }
-interface Report { choices: Choice[]; pending: Pending[]; goodies: G[]; meals?: { veg: number; nonveg: number; by_employee: Record<string, string> }; attendance?: { yes: number; no: number; by_employee: Record<string, boolean> } }
+interface Report { choices: Choice[]; pending: Pending[]; goodies: G[]; meals?: { veg: number; nonveg: number; by_employee: Record<string, string> }; attendance?: { yes: number; no: number; by_employee: Record<string, boolean>; declined?: { employee_id: string; name: string; at: string }[] } }
 
 const when = (iso: string) => new Date(iso).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
 
@@ -17,7 +17,7 @@ export default function SurveyPage() {
   const admin = useAdmin();
   const [data, setData] = useState<Report | null>(null);
   const [q, setQ] = useState('');
-  const [tab, setTab] = useState<'choices' | 'pending'>('choices');
+  const [tab, setTab] = useState<'choices' | 'pending' | 'declined'>('choices');
   const [err, setErr] = useState('');
   const [msg, setMsg] = useState('');
   const [copied, setCopied] = useState(false);
@@ -72,7 +72,7 @@ export default function SurveyPage() {
       {data && (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
           <Card><p className="text-sm text-slate-500">Responses</p><p className="text-3xl font-black">{data.choices.length}</p></Card>
-          <Card><p className="text-sm text-slate-500">Registered, not chosen yet</p><p className="text-3xl font-black">{data.pending.length}</p></Card>
+          <Card><p className="text-sm text-slate-500">No response yet</p><p className="text-3xl font-black">{data.pending.length}</p></Card>
           <Card><p className="text-sm text-slate-500">Attending 27 Nov</p><p className="text-2xl font-black"><span className="text-brand-700">{data.attendance?.yes ?? 0} Yes</span> · <span className="text-slate-500">{data.attendance?.no ?? 0} No</span></p></Card>
           <Card><p className="text-sm text-slate-500">Meals</p><p className="text-2xl font-black"><span className="text-emerald-700">{data.meals?.veg ?? 0} Veg</span> · <span className="text-rose-700">{data.meals?.nonveg ?? 0} Non-veg</span></p></Card>
           <Card><p className="text-sm text-slate-500">Goodies left</p><p className="text-3xl font-black">{Math.max(stock - taken, 0)} <span className="text-base font-medium text-slate-400">/ {stock}</span></p></Card>
@@ -101,7 +101,8 @@ export default function SurveyPage() {
         <div className="mb-3 flex flex-wrap items-center gap-2">
           <div className="flex rounded-lg bg-slate-100 p-0.5 text-sm font-semibold">
             <button className={`rounded-md px-3 py-1 ${tab === 'choices' ? 'bg-white shadow' : 'text-slate-500'}`} onClick={() => setTab('choices')}>Responses ({data?.choices.length ?? 0})</button>
-            <button className={`rounded-md px-3 py-1 ${tab === 'pending' ? 'bg-white shadow' : 'text-slate-500'}`} onClick={() => setTab('pending')}>Not chosen yet ({data?.pending.length ?? 0})</button>
+            <button className={`rounded-md px-3 py-1 ${tab === 'pending' ? 'bg-white shadow' : 'text-slate-500'}`} onClick={() => setTab('pending')}>No response yet ({data?.pending.length ?? 0})</button>
+            <button className={`rounded-md px-3 py-1 ${tab === 'declined' ? 'bg-white shadow' : 'text-slate-500'}`} onClick={() => setTab('declined')}>Not attending ({data?.attendance?.declined?.length ?? 0})</button>
           </div>
           <input className="input ml-auto max-w-xs" placeholder="Search name, ID, goodie…" value={q} onChange={(e) => setQ(e.target.value)} />
         </div>
@@ -123,6 +124,20 @@ export default function SurveyPage() {
                   </tr>
                 ))}
                 {choices.length === 0 && <tr><td colSpan={8} className="py-8 text-center text-slate-400">{data ? 'No responses yet.' : 'Loading…'}</td></tr>}
+              </tbody>
+            </table>
+          ) : tab === 'declined' ? (
+            <table className="w-full text-left text-sm">
+              <thead className="text-xs uppercase text-slate-500"><tr><th className="py-2 pr-3">Employee ID</th><th className="pr-3">Name</th><th className="pr-3">When</th><th /></tr></thead>
+              <tbody className="divide-y divide-slate-100">
+                {(data?.attendance?.declined ?? []).filter((d) => !needle || `${d.employee_id} ${d.name}`.toLowerCase().includes(needle)).map((d) => (
+                  <tr key={d.employee_id}>
+                    <td className="py-2 pr-3 font-mono">{d.employee_id}</td><td className="pr-3">{d.name}</td>
+                    <td className="whitespace-nowrap pr-3 text-slate-500">{when(d.at)}</td>
+                    <td className="text-right">{admin.atLeast('admin') && <button className="text-xs font-semibold text-rose-700 hover:underline" onClick={() => reset({ employee_id: d.employee_id, name: d.name, goodie: 'not attending' } as Choice)}>Clear</button>}</td>
+                  </tr>
+                ))}
+                {!data?.attendance?.declined?.length && <tr><td colSpan={4} className="py-8 text-center text-slate-400">Nobody has said they can’t attend.</td></tr>}
               </tbody>
             </table>
           ) : (

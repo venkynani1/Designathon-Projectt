@@ -6,7 +6,7 @@ import { useAdmin } from '@/components/admin/AdminContext';
 import { GoodiesTabs } from '@/components/admin/GoodiesTabs';
 import { RosterUpload } from '@/components/admin/RosterUpload';
 
-interface Person { employee_id: string; name: string; email: string | null; department: string | null; goodie: string | null; chosen_at: string | null }
+interface Person { employee_id: string; name: string; email: string | null; department: string | null; goodie: string | null; declined?: boolean; chosen_at: string | null }
 interface ImportResult { added: number; updated: number; total: number; skipped: { line: number; employee_id: string | null; name: string | null; problem: string }[] }
 type Draft = { original?: string; employee_id: string; name: string; email: string; department: string };
 
@@ -68,9 +68,9 @@ export default function ParticipantsPage() {
 
   const needle = q.trim().toLowerCase();
   const shown = useMemo(() => (people ?? []).filter((p) =>
-    (filter === 'all' || (filter === 'chosen' ? !!p.goodie : !p.goodie)) &&
+    (filter === 'all' || (filter === 'chosen' ? !!p.goodie || !!p.declined : !p.goodie && !p.declined)) &&
     (!needle || `${p.employee_id} ${p.name} ${p.email ?? ''} ${p.department ?? ''} ${p.goodie ?? ''}`.toLowerCase().includes(needle))), [people, needle, filter]);
-  const chosen = people?.filter((p) => p.goodie).length ?? 0;
+  const chosen = people?.filter((p) => p.goodie || p.declined).length ?? 0;
 
   return (
     <div className="space-y-4">
@@ -85,8 +85,8 @@ export default function ParticipantsPage() {
       {people && (
         <div className="grid gap-3 sm:grid-cols-3">
           <Card><p className="text-sm text-slate-500">In the participant list</p><p className="text-3xl font-black">{people.length}</p></Card>
-          <Card><p className="text-sm text-slate-500">Chose a goodie</p><p className="text-3xl font-black text-emerald-700">{chosen}</p></Card>
-          <Card><p className="text-sm text-slate-500">Not chosen yet</p><p className="text-3xl font-black text-amber-600">{people.length - chosen}</p></Card>
+          <Card><p className="text-sm text-slate-500">Responded</p><p className="text-3xl font-black text-emerald-700">{chosen}</p></Card>
+          <Card><p className="text-sm text-slate-500">No response yet</p><p className="text-3xl font-black text-amber-600">{people.length - chosen}</p></Card>
         </div>
       )}
 
@@ -126,7 +126,7 @@ export default function ParticipantsPage() {
           <div className="flex rounded-lg bg-slate-100 p-0.5 text-sm font-semibold">
             {(['all', 'pending', 'chosen'] as const).map((f) => (
               <button key={f} className={`rounded-md px-3 py-1 ${filter === f ? 'bg-white shadow' : 'text-slate-500'}`} onClick={() => setFilter(f)}>
-                {f === 'all' ? 'Everyone' : f === 'pending' ? 'Not chosen' : 'Chosen'}
+                {f === 'all' ? 'Everyone' : f === 'pending' ? 'No response' : 'Responded'}
               </button>
             ))}
           </div>
@@ -142,7 +142,7 @@ export default function ParticipantsPage() {
                 <tr key={p.employee_id}>
                   <td className="py-2 pr-3 font-mono">{p.employee_id}</td>
                   <td className="pr-3 font-medium">{p.name}</td>
-                  <td className="pr-3">{p.goodie ? <Badge tone="green">{p.goodie}</Badge> : <span className="text-slate-400">Not yet</span>}</td>
+                  <td className="pr-3">{p.goodie ? <Badge tone="green">{p.goodie}</Badge> : p.declined ? <Badge>Not attending</Badge> : <span className="text-slate-400">Not yet</span>}</td>
                   <td className="whitespace-nowrap text-right">
                     {canEdit && <>
                       <button className="mr-3 text-xs font-semibold text-brand-700 hover:underline" onClick={() => { setErr(''); setEdit({ original: p.employee_id, employee_id: p.employee_id, name: p.name, email: p.email ?? '', department: p.department ?? '' }); }}>Edit</button>

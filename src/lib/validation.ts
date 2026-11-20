@@ -66,10 +66,11 @@ export const goodieSchema = z.object({
 export const surveySubmitSchema = z.object({
   employee_id: z.string().trim().min(2, 'Enter your employee ID').max(40),
   name: z.string().trim().max(100).default(''), // optional when the employee ID is in the list (the list's name is used)
-  goodie_id: z.string().uuid(),
-  meal: z.enum(['veg', 'nonveg'], { message: 'Choose Veg or Non-veg' }),
+  goodie_id: z.string().uuid().nullish(),
+  meal: z.enum(['veg', 'nonveg']).nullish(),
   attending: z.boolean({ message: 'Tell us whether you will attend on 27 November' }),
-});
+}).refine((v) => !v.attending || !!v.goodie_id, { message: 'Choose a goodie', path: ['goodie_id'] })
+  .refine((v) => !v.attending || !!v.meal, { message: 'Choose Veg or Non-veg', path: ['meal'] });
 
 export const photoSchema = z.object({
   mime: z.enum(['image/jpeg', 'image/png', 'image/webp']),
