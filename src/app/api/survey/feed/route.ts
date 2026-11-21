@@ -15,8 +15,8 @@ export const GET = route(async () => {
   const feed = await db().rpc('survey_feed', { p_event: ev.id });
   return NextResponse.json(feed, {
     headers: {
-      'Cache-Control': 'public, max-age=0, s-maxage=1, stale-while-revalidate=1',
-      'CDN-Cache-Control': 'public, s-maxage=1, stale-while-revalidate=1',
+      'Cache-Control': 'public, max-age=0, s-maxage=5, stale-while-revalidate=5',
+      'CDN-Cache-Control': 'public, s-maxage=5, stale-while-revalidate=5',
       'X-Content-Type-Options': 'nosniff',
     },
   });

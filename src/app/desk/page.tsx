@@ -73,7 +73,7 @@ export default function DeskPage() {
   useEffect(() => {
     if (!me?.signed_in || me.finished) return;
     load();
-    const t = setInterval(() => { if (document.visibilityState === 'visible') load(); }, 1500);
+    const t = setInterval(() => { if (document.visibilityState === 'visible') load(); }, 3000);
     return () => clearInterval(t);
   }, [me, load]);
 

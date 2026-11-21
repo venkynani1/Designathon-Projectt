@@ -42,7 +42,7 @@ export default function CollectPage() {
         const r = await fetch(`/api/collect/status?emp=${encodeURIComponent(view.employee_id)}`, { cache: 'no-store' });
         if (r.ok) setView(await r.json());
       } catch { /* retry */ } finally { polling.current = false; }
-    }, 2000);
+    }, 3000);
     return () => clearInterval(t);
   }, [view]);
 

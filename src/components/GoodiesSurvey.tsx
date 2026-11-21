@@ -10,7 +10,8 @@ const MEAL_LABEL: Record<Meal, string> = { veg: 'Veg', nonveg: 'Non-veg' };
 interface Done { goodie: string | null; name: string; employee_id: string; meal?: Meal | null; attending?: boolean | null }
 interface Lookup { employee_id: string; found: boolean; name: string | null; list_required: boolean; chosen: string | null; declined?: boolean }
 
-const POLL_MS = 1500;
+const POLL_MS = 6000;
+const IDLE_STOP_MS = 10 * 60 * 1000; // stop refreshing after 10 minutes without a tap
 const DONE_KEY = 'dx-goodie-choice';
 
 export function GoodiesSurvey({ initial = null }: { initial?: Feed | null }) {
@@ -54,10 +55,18 @@ export function GoodiesSurvey({ initial = null }: { initial?: Feed | null }) {
   useEffect(() => {
     try { setDone(JSON.parse(localStorage.getItem(DONE_KEY) ?? 'null')); } catch { /* */ }
     load();
-    const t = setInterval(() => { if (document.visibilityState === 'visible') load(); }, POLL_MS);
-    const vis = () => { if (document.visibilityState === 'visible') load(); };
+    let lastTouch = Date.now();
+    const touch = () => { lastTouch = Date.now(); };
+    window.addEventListener('pointerdown', touch);
+    window.addEventListener('keydown', touch);
+    const t = setInterval(() => {
+      if (document.visibilityState !== 'visible' || Date.now() - lastTouch > IDLE_STOP_MS) return;
+      try { if (localStorage.getItem(DONE_KEY)) return; } catch { /* */ }   // already responded: no need for live counts
+      load();
+    }, POLL_MS);
+    const vis = () => { if (document.visibilityState === 'visible') { lastTouch = Date.now(); load(); } };
     document.addEventListener('visibilitychange', vis);
-    return () => { clearInterval(t); document.removeEventListener('visibilitychange', vis); };
+    return () => { clearInterval(t); document.removeEventListener('visibilitychange', vis); window.removeEventListener('pointerdown', touch); window.removeEventListener('keydown', touch); };
   }, [load]);
 
   // employee ID → name, as they type (debounced)

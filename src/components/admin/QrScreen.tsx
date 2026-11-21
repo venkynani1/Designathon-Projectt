@@ -28,7 +28,7 @@ export function QrScreen({ arena, title, subtitle, url, svg, canToggle }: { aren
       try { const r = await fetch('/api/survey/feed', { cache: 'no-store' }); if (r.ok) setGoodies((await r.json()).goodies); } catch { /* keep last */ } finally { busyFeed.current = false; }
     };
     tick();
-    const t = setInterval(tick, 1500);
+    const t = setInterval(tick, 5000);
     return () => clearInterval(t);
   }, [arena]);
   const open = s?.event[key] ?? false;
