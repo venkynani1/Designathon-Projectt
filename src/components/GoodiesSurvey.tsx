@@ -219,11 +219,17 @@ export function GoodiesSurvey({ initial = null }: { initial?: Feed | null }) {
             {attending === true && (<>
             <section>
               <h2 className="mb-2 mt-2 px-1 text-sm font-bold uppercase tracking-wide text-slate-500">Tap one goodie</h2>
+              {feed && (() => {
+                const avail = feed.goodies.filter((g) => g.left > 0);
+                if (avail.length === 0) return <div className="mb-3 rounded-xl bg-rose-50 p-3 text-sm font-medium text-rose-900 ring-1 ring-rose-200">All goodies have been taken.</div>;
+                if (avail.length < feed.goodies.length) return <div className="mb-3 rounded-xl bg-emerald-50 p-3 text-sm font-medium text-emerald-900 ring-1 ring-emerald-200">Still available: <strong>{avail.map((g) => g.name).join(', ')}</strong></div>;
+                return null;
+              })()}
               {note && <div className="mb-3 rounded-xl bg-amber-50 p-3 text-sm font-medium text-amber-900 ring-1 ring-amber-200">{note}</div>}
               {err && <div className="mb-3 rounded-xl bg-rose-50 p-3 text-sm font-medium text-rose-900 ring-1 ring-rose-200">{err}</div>}
               {!feed && !offline && <p className="py-12 text-center text-slate-400">Loading goodies…</p>}
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                {feed?.goodies.map((g) => {
+                {[...(feed?.goodies ?? [])].sort((x, y) => Number(y.left > 0) - Number(x.left > 0)).map((g) => {
                   const out = g.left <= 0;
                   const sel = pick === g.id;
                   const changed = flash[g.id] && Date.now() - flash[g.id] < 2500;
