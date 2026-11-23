@@ -235,7 +235,7 @@ export function GoodiesSurvey({ initial = null }: { initial?: Feed | null }) {
                   const changed = flash[g.id] && Date.now() - flash[g.id] < 2500;
                   const pct = g.stock ? Math.round((g.left / g.stock) * 100) : 0;
                   return (
-                    <button key={g.id} type="button" disabled={out || !feed.open}
+                    <button key={g.id} type="button" disabled={out || !feed?.open}
                       onClick={() => { setPick(g.id); setNote(''); setErr(''); }} aria-pressed={sel}
                       className={`relative overflow-hidden rounded-2xl bg-white text-left shadow-sm ring-2 transition active:scale-[0.98] ${sel ? 'ring-brand-600 shadow-lg' : 'ring-transparent'} ${out ? 'opacity-50 grayscale' : 'hover:shadow-md'} disabled:cursor-not-allowed`}>
                       <div className="aspect-square w-full bg-slate-100">
