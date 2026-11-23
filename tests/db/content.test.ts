@@ -369,3 +369,32 @@ describe('teams and one response per phone', () => {
     expect([...groups].sort((a, b) => a - b)).toEqual(groups); // ordered by group, Unassigned last
   });
 });
+
+describe('default goodie for people who never responded', () => {
+  it('assigns the default at the desk, meal chosen on the spot, skips people who said No', async () => {
+    const bag = (await t.db.rpc<{ id: string }>('admin_upsert_goodie', {
+      p_event: t.eventId, p_id: null, p_name: 'Default bag', p_description: null, p_stock: 2, p_image_url: null, p_is_active: true, p_sort_order: null, p_actor: t.actorId,
+    })).id;
+    await t.db.rpc('admin_set_default_goodie', { p_event: t.eventId, p_goodie: bag, p_actor: t.actorId });
+    await t.db.rpc('admin_roster_import', { p_event: t.eventId, p_replace: false, p_actor: t.actorId,
+      p_rows: [{ employee_id: 'NR1', name: 'Nil Resp' }, { employee_id: 'NR2', name: 'Nora Resp' }, { employee_id: 'NR3', name: 'Neha Resp' }, { employee_id: 'SN1', name: 'Said No' }] });
+    await t.db.rpc('set_event_flags', { p_event: t.eventId, p_flags: { goodies_open: true }, p_actor: t.actorId });
+    await t.db.rpc('survey_submit', { p_event: t.eventId, p_employee_id: 'SN1', p_name: '', p_goodie: null, p_meal: null, p_attending: false });
+
+    const v = await t.db.rpc<{ status: string; goodie: string; meal: string | null; via: string }>('collect_checkin', { p_event: t.eventId, p_employee_id: 'NR1' });
+    expect(v).toMatchObject({ status: 'ready', goodie: 'Default bag', meal: null, via: 'default' });
+    expect((await t.db.rpc<{ meal: string }>('collect_set_meal', { p_event: t.eventId, p_employee_id: 'NR1', p_meal: 'veg' })).meal).toBe('veg');
+    // already chosen meal can't be changed from the phone
+    expect((await t.db.rpc<{ meal: string }>('collect_set_meal', { p_event: t.eventId, p_employee_id: 'NR1', p_meal: 'nonveg' })).meal).toBe('veg');
+    // said No: no default
+    expect((await t.db.rpc<{ status: string }>('collect_checkin', { p_event: t.eventId, p_employee_id: 'SN1' })).status).toBe('declined');
+    // not on any list: nothing
+    expect((await t.db.rpc<{ status: string }>('collect_checkin', { p_event: t.eventId, p_employee_id: 'GHOST9' })).status).toBe('none');
+    // stock respected: 2 bags, 3 people
+    await t.db.rpc('collect_checkin', { p_event: t.eventId, p_employee_id: 'NR2' });
+    expect((await t.db.rpc<{ status: string }>('collect_checkin', { p_event: t.eventId, p_employee_id: 'NR3' })).status).toBe('none');
+    // desk can set the meal
+    expect((await t.db.rpc<{ meal: string }>('desk_set_meal', { p_event: t.eventId, p_employee_id: 'NR2', p_meal: 'nonveg', p_by: 'Priya' })).meal).toBe('nonveg');
+    expect((await t.db.rpc<Record<string, string>>('admin_choice_via', { p_event: t.eventId }))['NR1']).toBe('default');
+  });
+});

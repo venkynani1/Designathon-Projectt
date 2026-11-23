@@ -6,7 +6,7 @@ import { useAdmin } from '@/components/admin/AdminContext';
 import { GoodiesTabs } from '@/components/admin/GoodiesTabs';
 
 interface Summary { collected: number; total: number; in_queue: number; by_goodie: { name: string; chosen: number; collected: number }[] }
-interface Data { summary: Summary; desk: { pin: string; version: number } | null }
+interface Data { summary: Summary; desk: { pin: string; version: number } | null; default_goodie?: { goodie_id: string | null; name: string | null; left: number | null } }
 
 export default function DistributionPage() {
   const admin = useAdmin();
@@ -22,6 +22,11 @@ export default function DistributionPage() {
     const pin = window.prompt('New desk PIN (4–8 digits). Every distributor will be signed out and must sign in with the new PIN.', '');
     if (pin === null) return;
     try { await api('/api/admin/distribution/pin', { body: { pin: pin.trim() } }); await load(); } catch (e) { setErr(e instanceof Error ? e.message : 'Failed'); }
+  }
+  const [goodies, setGoodies] = useState<{ id: string; name: string; is_active: boolean }[]>([]);
+  useEffect(() => { api<{ goodies: { id: string; name: string; is_active: boolean }[] }>('/api/admin/goodies').then((r) => setGoodies(r.goodies)).catch(() => undefined); }, []);
+  async function setDefault(id: string) {
+    try { await api('/api/admin/distribution/default', { body: { goodie_id: id || null } }); await load(); } catch (e) { setErr(e instanceof Error ? e.message : 'Failed'); }
   }
   const s = d?.summary;
   return (
@@ -49,6 +54,17 @@ export default function DistributionPage() {
             {admin.atLeast('admin') && <button className="text-xs font-semibold text-rose-700 hover:underline" onClick={newPin}>Change PIN</button>}
           </div>
         )}
+      </Card>
+      <Card className="space-y-2">
+        <h2 className="font-bold">No response? Default goodie</h2>
+        <p className="text-sm text-slate-600">People in the participant list who never responded get this goodie when they scan at the desk (or are looked up). They choose Veg / Non-veg on the spot.</p>
+        <div className="flex flex-wrap items-center gap-3">
+          <select className="input max-w-xs" value={d?.default_goodie?.goodie_id ?? ''} disabled={!admin.atLeast('admin')} onChange={(e) => setDefault(e.target.value)}>
+            <option value="">None — no default goodie</option>
+            {goodies.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
+          </select>
+          {d?.default_goodie?.name && <span className="text-sm text-slate-600">{d.default_goodie.left} left</span>}
+        </div>
       </Card>
       {s && (
         <div className="grid gap-3 sm:grid-cols-3">

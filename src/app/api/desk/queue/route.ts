@@ -13,7 +13,8 @@ export const GET = route(async (req) => {
   const emp = req.nextUrl.searchParams.get('emp')?.trim();
   if (emp) {
     if (emp.length < 2 || emp.length > 40) throw new DxError('INVALID_INPUT', 'Enter a valid employee ID');
-    return json({ person: await db().rpc('collect_status', { p_event: ev.id, p_employee_id: emp }) });
+    // looking someone up at the desk = they're here: same as scanning (assigns the default goodie if they never responded)
+    return json({ person: await db().rpc('collect_checkin', { p_event: ev.id, p_employee_id: emp }) });
   }
   return json(await db().rpc('desk_queue', { p_event: ev.id }));
 });

@@ -79,6 +79,15 @@ export default function DeskPage() {
 
   function say(tone: 'ok' | 'err', text: string) { setToast({ tone, text }); setTimeout(() => setToast(null), 4000); }
 
+  async function setMeal(emp: string, meal: 'veg' | 'nonveg') {
+    setBusy(emp + 'meal');
+    try {
+      const r = await call<Lookup>('/api/desk/meal', { employee_id: emp, meal });
+      if (found?.employee_id === emp) setFound(r);
+      await load();
+    } catch (e) { say('err', e instanceof Error ? e.message : 'Failed'); } finally { setBusy(null); }
+  }
+
   async function mark(emp: string, action: 'collect' | 'undo' | 'skip' | 'came', label: string) {
     setBusy(emp + action);
     try {
@@ -151,6 +160,13 @@ export default function DeskPage() {
                 <p className="font-bold">{found.name ?? found.employee_id} <span className="font-mono text-xs text-slate-500">{found.employee_id}</span></p>
                 {found.status === 'ready' && <>
                   <p className="text-lg font-black text-brand-700">{found.goodie} {found.meal && <span className="text-sm font-semibold text-slate-600">· {MEAL[found.meal]}</span>}</p>
+                  {!found.meal && (
+                    <div className="mt-1 flex items-center gap-2 text-sm">
+                      <span className="font-semibold text-amber-700">Meal?</span>
+                      <button disabled={!!busy} onClick={() => setMeal(found.employee_id, 'veg')} className="rounded-lg bg-emerald-50 px-3 py-1 font-bold text-emerald-800 ring-1 ring-emerald-300">Veg</button>
+                      <button disabled={!!busy} onClick={() => setMeal(found.employee_id, 'nonveg')} className="rounded-lg bg-rose-50 px-3 py-1 font-bold text-rose-800 ring-1 ring-rose-300">Non-veg</button>
+                    </div>
+                  )}
                   <button disabled={busy === found.employee_id + 'collect'} onClick={() => mark(found.employee_id, 'collect', `${found.name} — ${found.goodie} collected`)}
                     className="mt-2 w-full rounded-xl bg-emerald-600 py-2.5 font-bold text-white disabled:opacity-50">✓ Collected</button>
                 </>}
@@ -184,7 +200,13 @@ export default function DeskPage() {
                     <p className="truncate text-lg font-black leading-tight">{p.name}</p>
                     <p className="font-mono text-xs text-slate-500">{p.employee_id} · since {time(p.checked_in_at)}</p>
                     <p className="mt-1 text-xl font-black text-brand-700">{p.goodie}</p>
-                    {p.meal && <p className="text-xs font-semibold text-slate-600">{MEAL[p.meal]}</p>}
+                    {p.meal ? <p className="text-xs font-semibold text-slate-600">{MEAL[p.meal]}</p> : (
+                      <div className="mt-1 flex items-center gap-1 text-xs">
+                        <span className="font-semibold text-amber-700">Meal?</span>
+                        <button disabled={!!busy} onClick={() => setMeal(p.employee_id, 'veg')} className="rounded-md bg-emerald-50 px-2 py-0.5 font-bold text-emerald-800 ring-1 ring-emerald-300">Veg</button>
+                        <button disabled={!!busy} onClick={() => setMeal(p.employee_id, 'nonveg')} className="rounded-md bg-rose-50 px-2 py-0.5 font-bold text-rose-800 ring-1 ring-rose-300">Non-veg</button>
+                      </div>
+                    )}
                     <div className="mt-2 flex gap-2">
                       <button disabled={!!busy} onClick={() => mark(p.employee_id, 'collect', `${p.name} — ${p.goodie} collected`)}
                         className="flex-1 rounded-xl bg-emerald-600 py-2.5 font-bold text-white hover:bg-emerald-500 disabled:opacity-50">

@@ -6,9 +6,10 @@ import { currentEvent } from '@/lib/event';
 export const GET = route(async () => {
   const admin = await requireAdmin({ role: 'viewer' });
   const ev = await currentEvent(db());
-  const [summary, desk] = await Promise.all([
+  const [summary, desk, def] = await Promise.all([
     db().rpc('admin_distribution_summary', { p_event: ev.id }),
     admin.role === 'viewer' ? null : db().rpc('admin_desk_get', { p_event: ev.id }),
+    db().rpc('admin_default_goodie', { p_event: ev.id }),
   ]);
-  return json({ summary, desk });
+  return json({ summary, desk, default_goodie: def });
 });

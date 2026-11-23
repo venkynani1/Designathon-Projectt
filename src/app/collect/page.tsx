@@ -46,6 +46,17 @@ export default function CollectPage() {
     return () => clearInterval(t);
   }, [view]);
 
+  async function chooseMeal(meal: 'veg' | 'nonveg') {
+    if (!view) return;
+    setBusy(true); setErr('');
+    try {
+      const r = await fetch('/api/collect/meal', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ employee_id: view.employee_id, meal }) });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j?.error?.message ?? 'Something went wrong');
+      setView(j);
+    } catch (e) { setErr(e instanceof Error ? e.message : 'Network problem — try again'); } finally { setBusy(false); }
+  }
+
   const reset = () => { try { localStorage.removeItem(KEY); } catch { /* */ } setView(null); setEmp(''); setErr(''); };
   const first = view?.name?.split(' ')[0] ?? '';
 
@@ -70,7 +81,20 @@ export default function CollectPage() {
           </form>
         )}
 
-        {view?.status === 'ready' && (
+        {view?.status === 'ready' && !view.meal && (
+          <section className="rounded-3xl bg-white p-6 text-center shadow-lg ring-1 ring-slate-200">
+            <p className="text-2xl font-black">Hi {first}!</p>
+            <p className="mt-1 text-slate-600">Your goodie: <strong className="text-slate-900">{view.goodie}</strong></p>
+            <p className="mt-5 text-sm font-bold uppercase tracking-wide text-slate-500">Choose your meal</p>
+            <div className="mt-3 grid grid-cols-2 gap-3">
+              <button disabled={busy} onClick={() => chooseMeal('veg')} className="rounded-2xl bg-emerald-50 py-5 text-lg font-bold text-emerald-800 ring-2 ring-emerald-500 disabled:opacity-50">🟢 Veg</button>
+              <button disabled={busy} onClick={() => chooseMeal('nonveg')} className="rounded-2xl bg-rose-50 py-5 text-lg font-bold text-rose-800 ring-2 ring-rose-500 disabled:opacity-50">🔴 Non-veg</button>
+            </div>
+            {err && <p className="mt-3 rounded-xl bg-rose-50 p-3 text-sm text-rose-800 ring-1 ring-rose-200">{err}</p>}
+          </section>
+        )}
+
+        {view?.status === 'ready' && !!view.meal && (
           <section className="overflow-hidden rounded-3xl bg-white text-center shadow-lg ring-4 ring-amber-400">
             <div className="bg-amber-400 px-4 py-2 text-sm font-black uppercase tracking-widest text-amber-950">Show this at the desk</div>
             <div className="p-6">

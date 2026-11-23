@@ -36,7 +36,7 @@ export async function buildSurveyReport(eventName: string, d: SurveyReport, auto
     [['Employee ID', 16], ['Name', 28], ['Goodie', 24], ['Meal', 10], ['Attending 27 Nov', 16], ['Chosen at (IST)', 20], ['In participant list?', 14], ['Email', 30], ['Department', 20], ['Team', 12], ['How', 16], ['Collected at (IST)', 20], ['Collected by', 16]],
     [...d.choices].reverse().map((c) => [c.employee_id, c.name, c.goodie, MEAL[meals.by_employee[c.employee_id]] ?? '',
       att.by_employee[c.employee_id] === undefined ? '' : att.by_employee[c.employee_id] ? 'Yes' : 'No', ist(c.chosen_at), c.registered ? 'Yes' : 'Not found',
-      c.email ?? '', c.department ?? '', c.team_number ? teamLabel(c.team_number) : '', auto.has(c.employee_id) || via[c.employee_id] === 'autopick' ? 'Auto-assigned' : via[c.employee_id] === 'offline' ? 'Offline registration' : 'Chose in survey',
+      c.email ?? '', c.department ?? '', c.team_number ? teamLabel(c.team_number) : '', auto.has(c.employee_id) || via[c.employee_id] === 'autopick' ? 'Auto-assigned' : via[c.employee_id] === 'offline' ? 'Offline registration' : via[c.employee_id] === 'default' ? 'Default (no response)' : 'Chose in survey',
       collected[c.employee_id] ? ist(collected[c.employee_id].at) : 'Not collected', collected[c.employee_id]?.by ?? '']), [1]);
   sheet(wb, 'Totals per goodie', [['Goodie', 28], ['Quantity', 12], ['Chosen', 12], ['Left', 12], ['Visible', 10]],
     d.goodies.map((g) => [g.name, g.stock, g.reserved, Math.max(g.stock - g.reserved, 0), g.is_active ? 'Yes' : 'Hidden']));
