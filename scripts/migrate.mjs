@@ -47,8 +47,12 @@ try {
   await client.query('revoke all on public.dx_schema_migrations from public');
 
   // ---- least-privilege runtime role
+  // A second deployment sharing this database sets DX_APP_DB_ROLE=off: it connects with the
+  // owner login and must never reset dx_app's password (that would break the other deployment).
   const pepper = process.env.DX_PIN_PEPPER;
-  if (pepper) {
+  if (process.env.DX_APP_DB_ROLE === 'off') {
+    console.log('[migrate] DX_APP_DB_ROLE=off — leaving the dx_app role untouched');
+  } else if (pepper) {
     const pw = createHmac('sha256', Buffer.from(pepper, 'base64')).update('dx-app-db-password:v1').digest('base64url');
     const exists = (await client.query(`select 1 from pg_roles where rolname = 'dx_app'`)).rowCount > 0;
     await client.query(`${exists ? 'alter' : 'create'} role dx_app with login password '${pw}'`);
